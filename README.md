@@ -58,75 +58,63 @@ O resultado — apenas as feições que intersectam a mancha de inundação — 
 
 ### 2. Cálculo dos indicadores por setor
 
+Notação geral: $N$ = conjunto total de feições no município; $\hat{N} \subseteq N$ = conjunto das feições atingidas pelo cenário selecionado. O percentual de impacto para qualquer métrica $m$ é:
+
+$$\%\,\text{atingido} = \frac{m_{\hat{N}}}{m_N} \times 100$$
+
 #### Empresas
 
-Sendo $N_{atg}$ o conjunto de estabelecimentos atingidos e $N_{base}$ o conjunto total:
+Cada feição é um estabelecimento com os campos `Empregados` ($E_i$), `Massa_Salarial` ($W_i$) e `Média Salarial` ($\bar{S}_i$):
 
-$$\text{Estabelecimentos atingidos} = |N_{atg}|$$
+$$\text{Estabelecimentos} = |\hat{N}|$$
 
-$$\text{Vínculos atingidos} = \sum_{i \in N_{atg}} \text{Empregados}_i$$
-
-$$\text{Massa salarial atingida} = \sum_{i \in N_{atg}} \text{Massa\_Salarial}_i$$
-
-$$\text{Média salarial} = \frac{\sum_{i \in N_{atg}} \overline{\text{Salário}}_i}{|N_{atg}|}$$
-
-O percentual de impacto para qualquer métrica $m$ é:
-
-$$\%\text{atingido} = \frac{m_{atg}}{m_{base}} \times 100$$
+$$\text{Vínculos} = \sum_{i \,\in\, \hat{N}} E_i \qquad \text{Massa salarial} = \sum_{i \,\in\, \hat{N}} W_i \qquad \text{Média salarial} = \frac{1}{|\hat{N}|}\sum_{i \,\in\, \hat{N}} \bar{S}_i$$
 
 #### Educação
 
-Para cada modalidade $k \in \{\text{infantil, fundamental, médio, profissional, EJA, especial}\}$:
+Cada feição é uma escola com os campos `qtd_prof` ($p_i$) e `qtd_matri_k` ($m_{k,i}$) para cada modalidade $k$ ∈ {infantil, fundamental, médio, profissional, EJA, especial}:
 
-$$\text{Matrículas}_{k,\,atg} = \sum_{i \in N_{atg}} \text{qtd\_matri}_{k,\,i}$$
-
-$$\text{Professores}_{atg} = \sum_{i \in N_{atg}} \text{qtd\_prof}_i$$
+$$P = \sum_{i \,\in\, \hat{N}} p_i \qquad M_k = \sum_{i \,\in\, \hat{N}} m_{k,i}$$
 
 #### Saúde
 
-$$\text{Unidades}_{tipo,\,atg} = \left|\{i \in N_{atg} : \text{tipo\_estabelecimento}_i = \text{tipo}\}\right|$$
+Cada feição é uma unidade com categoria `co_tipo_estabelecimento` e colunas de staff `staff_k` ($c_{k,i}$) para cada categoria $k$ (médicos, enfermagem, farmácia etc.):
 
-Para cada categoria profissional $k$:
+$$\text{Unidades por tipo} \;t = \bigl|\{i \in \hat{N} : \text{tipo}_i = t\}\bigr|$$
 
-$$\text{Staff}_{k,\,atg} = \sum_{i \in N_{atg}} \text{staff}_{k,\,i}$$
-
-$$\%\text{staff}_k = \frac{\text{Staff}_{k,\,atg}}{\text{Staff}_{k,\,base}} \times 100$$
+$$C_k = \sum_{i \,\in\, \hat{N}} c_{k,i} \qquad \%\,\text{staff}_k = \frac{C_{k,\,\hat{N}}}{C_{k,\,N}} \times 100$$
 
 #### Logradouros
 
-Cada feição representa um **segmento** de logradouro. A deduplicação para contagem de ruas únicas usa o par (`tipo`, `nome`):
+Cada feição é um segmento de via. A chave de deduplicação é o par (campo `tipo`, campo `nome`):
 
-$$\text{Ruas únicas}_{atg} = \left|\left\{\text{tipo}_i \| \text{nome}_i : i \in N_{atg}\right\}\right|$$
+$$R = \bigl|\bigl\{(t_i,\, n_i) : i \in \hat{N}\bigr\}\bigr|$$
 
-A cobertura de serviços é calculada como contagem de feições com flag binário ativo ($v = 1$):
+onde $R$ é o número de ruas únicas atingidas. Os flags `drenagem` e `iluminacao` são atributos binários $\{0, 1\}$:
 
-$$\text{Com drenagem}_{atg} = \left|\{i \in N_{atg} : \text{drenagem}_i = 1\}\right|$$
-
-$$\text{Com iluminação}_{atg} = \left|\{i \in N_{atg} : \text{iluminacao}_i = 1\}\right|$$
+$$F_s = \bigl|\{i \in \hat{N} : s_i = 1\}\bigr|, \quad s \in \{\text{drenagem},\;\text{iluminacao}\}$$
 
 #### Quadras e Terrenos
 
-$$\text{Quadras atingidas} = |N_{atg}|$$
+Cada feição é uma quadra ou um lote. Contagem simples:
 
-Para terrenos, cada atributo de saneamento é um flag $\in \{0, 1\}$:
+$$\text{Quadras} = |\hat{N}|$$
 
-$$\text{Com } s = \left|\{i \in N_{atg} : s_i = 1\}\right|, \quad s \in \{\text{água, coleta\_lixo, esgoto\_pluvial, condomínio}\}$$
+Para terrenos, os atributos de saneamento são flags binários (`agua`, `coleta_lix`, `esgoto_plu`, `condominio`):
 
-O esgoto cloacal é verificado por equivalência de string (aceita variantes de nomenclatura):
+$$F_s = \bigl|\{i \in \hat{N} : s_i = 1\}\bigr|$$
 
-$$\text{Com esgoto cloacal} = \left|\{i \in N_{atg} : \text{esgoto\_clo}_i \in \{\text{"esgoto\_cloacal", "cloacal", "1"}\}\}\right|$$
+O tipo de esgoto (`esgoto_clo`) é verificado por equivalência de string — valores aceitos como cloacal: `"esgoto_cloacal"`, `"cloacal"`, `"1"`; valores aceitos como fossa: `"fossa_septica"`, `"fossa"`.
 
 #### Uso e Cobertura da Terra / Agricultura
 
-A área de cada feição vetorial $f$ é calculada pelo `@turf/turf` (WGS 84, resultado em m²) e convertida para hectares:
+A área de cada feição vetorial $f_i$ é calculada pelo `@turf/turf` (elipsoide WGS 84, m²) e convertida para hectares:
 
-$$ha_f = \frac{\text{turf.area}(f)}{10\,000}$$
+$$a_i = \frac{\text{area}(f_i)}{10000}$$
 
-Feições com $ha_f < 0{,}5$ são descartadas (ruído de vetorização do raster MapaBiomas). A área total atingida por classe $k$ é:
+Feições com $a_i < 0{,}5\;\text{ha}$ são descartadas (ruído de vetorização do raster MapaBiomas). A área total atingida por classe ou cultura $k$ é:
 
-$$Ha_{k,\,atg} = \sum_{\substack{i \in N_{atg} \\ \text{classe}_i = k}} ha_i, \quad ha_i \geq 0{,}5$$
-
-$$\%\text{área}_k = \frac{Ha_{k,\,atg}}{Ha_{k,\,base}} \times 100$$
+$$A_k = \sum_{\substack{i \,\in\, \hat{N},\; k_i = k \\ a_i \,\geq\, 0{,}5}} a_i \qquad \%\,\text{área}_k = \frac{A_{k,\,\hat{N}}}{A_{k,\,N}} \times 100$$
 
 ### 3. Formatos de arquivo e desempenho
 
