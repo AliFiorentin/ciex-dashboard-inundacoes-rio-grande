@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@turf/turf": "^7.3.5",
+    "@vercel/speed-insights": "^2.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "flatgeobuf": "^4.4.0",
