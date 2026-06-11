@@ -16,8 +16,6 @@ Dashboard web interativo para análise geoespacial do impacto socioeconômico e 
 
 A aplicação é um dashboard de página única construído com **Next.js + TypeScript**, exibindo dados geoespaciais sobre um mapa base vetorial (MapLibre GL). O usuário pode alternar entre cenários de inundação e visualizar, para cada camada, o total de pontos/áreas atingidos e indicadores agregados (KPIs) no painel lateral.
 
-**Stack principal:** Next.js 16, TypeScript, MapLibre GL (`react-map-gl`), Tailwind CSS 4, shadcn/ui, Recharts, `@turf/turf`, `flatgeobuf`, `xlsx`.
-
 **Funcionalidades:**
 - Alternância entre cenários de inundação com carregamento assíncrono por demanda
 - Painel de análise com abas por setor (Empresas, Saúde, Educação, Infraestrutura, Agricultura, Cobertura da Terra)
@@ -48,101 +46,155 @@ A aplicação é um dashboard de página única construído com **Next.js + Type
 
 ## Metodologia
 
-### 1. Pré-processamento espacial (Python / GeoPandas)
+### 1. Seleção dos atingidos (Python / GeoPandas)
 
-Todos os cruzamentos espaciais são **pré-computados offline** — não há spatial join no browser. O pipeline gera, para cada camada e cenário, um arquivo `_ATINGIDOS_` contendo apenas as feições dentro da mancha de inundação.
+Todos os cruzamentos espaciais são **pré-computados offline** via junção espacial ponto-em-polígono (ou polígono-em-polígono), utilizando o predicado `intersects`:
 
-```
-sjoin(camada_base, mancha_inundacao, how="inner", predicate="intersects")
-```
-
-Os scripts estão em `scripts/`:
-
-| Script | Função |
-|---|---|
-| `converter_infra_rio_grande.py` | Infraestrutura urbana (logradouros, quadras, terrenos, prédios públicos, segurança) → GeoJSON/FGB |
-| `converter_cobertura_rio_grande.py` | Uso e cobertura da terra (MapaBiomas vetorial) → FGB |
-| `converter_agricultura_rio_grande.py` | Agricultura (MapaBiomas vetorial) → FGB |
-| `converter_cobertura_raster.py` | Cobertura MapaBiomas (TIFF) → PNG georreferenciado |
-| `converter_agricultura_raster.py` | Agricultura MapaBiomas (TIFF) → PNG georreferenciado |
-
-### 2. Formatos de arquivo
-
-| Formato | Uso |
-|---|---|
-| `.geojson` | Camadas de pontos (empresas, saúde, educação) e polígonos pequenos |
-| `.fgb` (FlatGeobuf) | Camadas de polígonos grandes (terrenos, quadras, cobertura, agricultura) — streaming eficiente |
-
-O FlatGeobuf é carregado via `flatgeobuf.geojson.deserialize` em stream, sem necessidade de carregar o arquivo inteiro na memória antes de renderizar.
-
-### 3. Convenção de nomenclatura dos arquivos
-
-Os nomes dos arquivos seguem a função `slugify`: acentos removidos, letras minúsculas, sequências de caracteres não-alfanuméricos substituídas por `_`.
-
-```
-"Cenário Maio 2024 + 50%" → cenario_maio_2024_50
+```python
+atingidos = gpd.sjoin(camada_base, mancha_inundacao, how="inner", predicate="intersects")
 ```
 
-Padrão dos arquivos de cenário:
-```
-public/dados_convertidos/rio_grande/cenarios/
-├── rio_grande___<slug>.geojson                          ← mancha de inundação
-├── empresas_ATINGIDOS_rio_grande___<slug>.geojson
-├── educacao_ATINGIDOS_rio_grande___<slug>.geojson
-├── saude_ATINGIDOS_rio_grande___<slug>.geojson
-├── cobertura_ATINGIDOS_rio_grande___<slug>.fgb
-├── agricultura_ATINGIDOS_rio_grande___<slug>.fgb
-└── infra_<camada>_ATINGIDOS_rio_grande___<slug>.(geojson|fgb)
-```
+O resultado — apenas as feições que intersectam a mancha de inundação — é exportado como GeoJSON ou FlatGeobuf (`.fgb`) e servido estáticamente pelo Next.js. Não há processamento espacial no browser.
 
-### 4. Indicadores calculados (KPIs)
+### 2. Cálculo dos indicadores por setor
 
-**Empresas**
-- Estabelecimentos formais atingidos
-- Vínculos empregatícios formais atingidos
-- Massa salarial total (R$)
-- Média salarial por empresa (R$)
+#### Empresas
 
-**Educação**
-- Escolas atingidas (por dependência: federal, estadual, municipal, privada)
-- Professores
-- Matrículas por modalidade: Educação Infantil, Ensino Fundamental, Ensino Médio, Profissional, EJA, Educação Especial
+Sendo $N_{atg}$ o conjunto de estabelecimentos atingidos e $N_{base}$ o conjunto total:
 
-**Saúde**
-- Unidades de saúde atingidas (por tipo de estabelecimento)
-- Quadro de pessoal por categoria: médicos, enfermagem, farmácia, odontologia, ACS/endemias, diagnóstico/imagem, administração, serviços gerais, transporte de urgência, outros
+$$\text{Estabelecimentos atingidos} = |N_{atg}|$$
 
-**Infraestrutura**
-- *Logradouros*: ruas únicas atingidas (deduplicadas por `tipo + nome`), com e sem drenagem, com e sem iluminação
-- *Quadras*: quantidade e área total (m²)
-- *Terrenos*: quantidade; acesso a água, coleta de lixo, esgoto pluvial e cloacal, condomínios (flags 0/1)
-- *Prédios Públicos e Segurança*: contagem por nome
+$$\text{Vínculos atingidos} = \sum_{i \in N_{atg}} \text{Empregados}_i$$
 
-**Uso e Cobertura da Terra / Agricultura**
-- Área atingida (ha) por classe de cobertura ou cultura agrícola, calculada via `@turf/turf`
+$$\text{Massa salarial atingida} = \sum_{i \in N_{atg}} \text{Massa\_Salarial}_i$$
 
-### 5. Carregamento e desempenho
+$$\text{Média salarial} = \frac{\sum_{i \in N_{atg}} \overline{\text{Salário}}_i}{|N_{atg}|}$$
 
-- **Dados de base** carregados uma única vez na inicialização do componente (`useEffect` sem dependências)
-- **Dados atingidos** carregados sob demanda a cada troca de cenário, com `AbortController` para cancelar requisições em andamento
-- **Terrenos** (~28 MB): solicita confirmação do usuário antes do carregamento por causa do tamanho
-- Camadas de ponto são clusterizadas automaticamente pelo MapLibre GL (raio de 50px)
+O percentual de impacto para qualquer métrica $m$ é:
 
-### 6. Renderização no mapa
+$$\%\text{atingido} = \frac{m_{atg}}{m_{base}} \times 100$$
 
-Camadas renderizadas em ordem (z-order determinado pela posição no JSX, sem `beforeId`):
+#### Educação
+
+Para cada modalidade $k \in \{\text{infantil, fundamental, médio, profissional, EJA, especial}\}$:
+
+$$\text{Matrículas}_{k,\,atg} = \sum_{i \in N_{atg}} \text{qtd\_matri}_{k,\,i}$$
+
+$$\text{Professores}_{atg} = \sum_{i \in N_{atg}} \text{qtd\_prof}_i$$
+
+#### Saúde
+
+$$\text{Unidades}_{tipo,\,atg} = \left|\{i \in N_{atg} : \text{tipo\_estabelecimento}_i = \text{tipo}\}\right|$$
+
+Para cada categoria profissional $k$:
+
+$$\text{Staff}_{k,\,atg} = \sum_{i \in N_{atg}} \text{staff}_{k,\,i}$$
+
+$$\%\text{staff}_k = \frac{\text{Staff}_{k,\,atg}}{\text{Staff}_{k,\,base}} \times 100$$
+
+#### Logradouros
+
+Cada feição representa um **segmento** de logradouro. A deduplicação para contagem de ruas únicas usa o par (`tipo`, `nome`):
+
+$$\text{Ruas únicas}_{atg} = \left|\left\{\text{tipo}_i \| \text{nome}_i : i \in N_{atg}\right\}\right|$$
+
+A cobertura de serviços é calculada como contagem de feições com flag binário ativo ($v = 1$):
+
+$$\text{Com drenagem}_{atg} = \left|\{i \in N_{atg} : \text{drenagem}_i = 1\}\right|$$
+
+$$\text{Com iluminação}_{atg} = \left|\{i \in N_{atg} : \text{iluminacao}_i = 1\}\right|$$
+
+#### Quadras e Terrenos
+
+$$\text{Quadras atingidas} = |N_{atg}|$$
+
+Para terrenos, cada atributo de saneamento é um flag $\in \{0, 1\}$:
+
+$$\text{Com } s = \left|\{i \in N_{atg} : s_i = 1\}\right|, \quad s \in \{\text{água, coleta\_lixo, esgoto\_pluvial, condomínio}\}$$
+
+O esgoto cloacal é verificado por equivalência de string (aceita variantes de nomenclatura):
+
+$$\text{Com esgoto cloacal} = \left|\{i \in N_{atg} : \text{esgoto\_clo}_i \in \{\text{"esgoto\_cloacal", "cloacal", "1"}\}\}\right|$$
+
+#### Uso e Cobertura da Terra / Agricultura
+
+A área de cada feição vetorial $f$ é calculada pelo `@turf/turf` (WGS 84, resultado em m²) e convertida para hectares:
+
+$$ha_f = \frac{\text{turf.area}(f)}{10\,000}$$
+
+Feições com $ha_f < 0{,}5$ são descartadas (ruído de vetorização do raster MapaBiomas). A área total atingida por classe $k$ é:
+
+$$Ha_{k,\,atg} = \sum_{\substack{i \in N_{atg} \\ \text{classe}_i = k}} ha_i, \quad ha_i \geq 0{,}5$$
+
+$$\%\text{área}_k = \frac{Ha_{k,\,atg}}{Ha_{k,\,base}} \times 100$$
+
+### 3. Formatos de arquivo e desempenho
+
+| Formato | Camadas | Motivo |
+|---|---|---|
+| `.geojson` | Empresas, Educação, Saúde, Logradouros, Prédios Públicos, Segurança, Cenário | Tamanho reduzido, parsing nativo |
+| `.fgb` (FlatGeobuf) | Cobertura, Agricultura, Quadras, Terrenos | Streaming binário eficiente para arquivos grandes |
+
+O FlatGeobuf é carregado em stream via `flatgeobuf.geojson.deserialize`, sem necessidade de carregar o arquivo inteiro na memória antes de renderizar. Terrenos (~28 MB) solicita confirmação do usuário antes do carregamento.
+
+Dados de base são carregados uma única vez na inicialização. Dados atingidos são carregados sob demanda a cada troca de cenário, com `AbortController` para cancelar requisições em andamento.
+
+### 4. Renderização e z-order
+
+Camadas renderizadas em ordem crescente de z-index (determinada pela posição no JSX, sem uso de `beforeId`):
 
 1. Polígono de inundação (cenário)
 2. Uso e cobertura da terra
 3. Agricultura
-4. Infraestrutura (fill + line + point por geometry type)
-5. Empresas, Saúde, Educação (pontos — renderizados por cima)
+4. Infraestrutura (geometrias fill/line/point selecionadas por filtro de tipo)
+5. Empresas, Saúde, Educação (pontos clusterizados — renderizados por cima)
 
-Cores de marcadores: Empresas `#2563eb`, Educação `#16a34a`, Saúde `#dc2626`.
+Pontos são clusterizados automaticamente pelo MapLibre GL (raio 50 px). A bounding box da mancha ativa é calculada via `turf.bbox` para reposicionamento automático do mapa.
 
-### 7. Permalink
+### 5. Permalink
 
-O cenário ativo é codificado na URL via `?c=<slug>`, definido por `history.replaceState` a cada troca. Na inicialização, o valor é lido via `ref` para evitar re-renderizações extras.
+O cenário ativo é persistido na URL via `?c=<slug>` usando `history.replaceState`. O slug é lido por `ref` na inicialização para evitar re-renderizações desnecessárias.
+
+---
+
+## Dependências
+
+### Aplicação (Node.js ≥ 18)
+
+| Pacote | Versão | Função |
+|---|---|---|
+| `next` | ^16 | Framework React com SSR e servidor estático |
+| `react` / `react-dom` | ^19 | Biblioteca de UI |
+| `maplibre-gl` | ^5 | Motor de renderização de mapas vetoriais |
+| `react-map-gl` | ^8 | Wrapper React para MapLibre GL |
+| `@turf/turf` | ^7 | Cálculos geoespaciais (área, bounding box) |
+| `flatgeobuf` | ^4 | Leitura em stream de arquivos `.fgb` |
+| `recharts` | ^3 | Gráficos de rosca (donut charts) |
+| `xlsx` | ^0.18 | Exportação de dados em formato XLSX |
+| `radix-ui` | ^1 | Primitivos de UI acessíveis (base do shadcn/ui) |
+| `lucide-react` | ^1 | Biblioteca de ícones |
+| `tailwindcss` | ^4 | Framework CSS utilitário |
+| `typescript` | ^5 | Tipagem estática |
+
+Instalar com:
+```bash
+npm install
+```
+
+### Scripts de conversão (Python ≥ 3.10)
+
+| Pacote | Função |
+|---|---|
+| `geopandas` | Leitura de shapefiles/GeoJSON e junção espacial (`sjoin`) |
+| `shapely` | Operações geométricas (dependência do geopandas) |
+| `pandas` | Manipulação tabular |
+| `numpy` | Operações numéricas |
+| `rasterio` | Leitura e vetorização de rasters GeoTIFF (MapaBiomas) |
+
+Instalar com:
+```bash
+pip install geopandas shapely pandas numpy rasterio
+```
 
 ---
 
@@ -162,9 +214,9 @@ npm run format     # Prettier
 
 ### Adicionando um novo cenário
 
-1. Gere os arquivos `_ATINGIDOS_` via scripts Python para o novo slug de cenário.
+1. Gere os arquivos `_ATINGIDOS_` via scripts Python para o novo cenário.
 2. Adicione o nome do cenário ao array `CENARIOS` em `app/page.tsx`.
-3. Coloque os arquivos em `public/dados_convertidos/rio_grande/cenarios/` seguindo a convenção de nomenclatura.
+3. Coloque os arquivos em `public/dados_convertidos/rio_grande/cenarios/`.
 
 ---
 
@@ -176,7 +228,7 @@ app/
   layout.tsx        — Layout raiz Next.js
   globals.css       — Estilos globais e Tailwind
 components/ui/      — Componentes shadcn/ui + wrapper MapLibre
-scripts/            — Conversores Python (GeoPandas) para geração dos dados
+scripts/            — Conversores Python (GeoPandas/Rasterio) para geração dos dados
 public/
   dados_convertidos/
     rio_grande/     — GeoJSON e FGB prontos para consumo pelo browser
