@@ -80,7 +80,7 @@ $$P = \sum_{i \,\in\, \hat{N}} p_i \qquad M_k = \sum_{i \,\in\, \hat{N}} m_{k,i}
 
 Cada feição é uma unidade com categoria `co_tipo_estabelecimento` e colunas de staff `staff_k` ($c_{k,i}$) para cada categoria $k$ (médicos, enfermagem, farmácia etc.):
 
-$$\text{Unidades por tipo} \;t = \left|\{i \in \hat{N} : \text{tipo}_i = t\}\right|$$
+$$\text{Unidades por tipo} \;t = |\{i \in \hat{N} : \text{tipo}_i = t\}|$$
 
 $$C_k = \sum_{i \,\in\, \hat{N}} c_{k,i} \qquad \%\,\text{staff}_k = \frac{C_{k,\,\hat{N}}}{C_{k,\,N}} \times 100$$
 
@@ -88,11 +88,11 @@ $$C_k = \sum_{i \,\in\, \hat{N}} c_{k,i} \qquad \%\,\text{staff}_k = \frac{C_{k,
 
 Cada feição é um segmento de via. A chave de deduplicação é o par (campo `tipo`, campo `nome`):
 
-$$R = \left|\left\{(t_i,\, n_i) : i \in \hat{N}\right\}\right|$$
+$$R = |\left\{(t_i,\, n_i) : i \in \hat{N}\right\}|$$
 
 onde $R$ é o número de ruas únicas atingidas. Os flags `drenagem` e `iluminacao` são atributos binários $\{0, 1\}$:
 
-$$F_s = \left|\{i \in \hat{N} : s_i = 1\}\right|, \quad s \in \{\text{drenagem},\;\text{iluminacao}\}$$
+$$F_s = |\{i \in \hat{N} : s_i = 1\}|, \quad s \in \{\text{drenagem},\;\text{iluminacao}\}$$
 
 #### Quadras e Terrenos
 
@@ -102,7 +102,7 @@ $$\text{Quadras} = |\hat{N}|$$
 
 Para terrenos, os atributos de saneamento são flags binários (`agua`, `coleta_lix`, `esgoto_plu`, `condominio`):
 
-$$F_s = \left|\{i \in \hat{N} : s_i = 1\}\right|$$
+$$F_s = |\{i \in \hat{N} : s_i = 1\}|$$
 
 O tipo de esgoto (`esgoto_clo`) é verificado por equivalência de string — valores aceitos como cloacal: `"esgoto_cloacal"`, `"cloacal"`, `"1"`; valores aceitos como fossa: `"fossa_septica"`, `"fossa"`.
 
