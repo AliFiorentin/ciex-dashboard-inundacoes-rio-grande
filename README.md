@@ -88,7 +88,7 @@ $$C_k = \sum_{i \,\in\, \hat{N}} c_{k,i} \qquad \%\,\text{staff}_k = \frac{C_{k,
 
 Cada feição é um segmento de via. A chave de deduplicação é o par (campo `tipo`, campo `nome`):
 
-$$R = |\left\{(t_i,\, n_i) : i \in \hat{N}\right\}|$$
+$$R = |\{(t_i,\, n_i) : i \in \hat{N}\}|$$
 
 onde $R$ é o número de ruas únicas atingidas. Os flags `drenagem` e `iluminacao` são atributos binários $\{0, 1\}$:
 
