@@ -1,0 +1,21 @@
+{
+"type": "FeatureCollection",
+"name": "infra_predios_publicos_ATINGIDOS_rio_grande___cenario_maio_2024_50",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "Nome": "Prédio da Alfandega", "Endereço": "R. Mal. Floriano Peixoto, 300 - Centro", "Latitude": -32.0308745, "Longitude": -52.0949457 }, "geometry": { "type": "Point", "coordinates": [ -52.0949457, -32.0308745 ] } },
+{ "type": "Feature", "properties": { "Nome": "Prefeitura Municipal do Rio Grande", "Endereço": "R. Mal. Floriano Peixoto, 111 - Centro", "Latitude": -32.030778, "Longitude": -52.0978999 }, "geometry": { "type": "Point", "coordinates": [ -52.0978999, -32.030778 ] } },
+{ "type": "Feature", "properties": { "Nome": "Câmara Municipal do Rio Grande", "Endereço": "R. Gen. Vitorino, 441 - Centro", "Latitude": -32.0353344, "Longitude": -52.0983002 }, "geometry": { "type": "Point", "coordinates": [ -52.0983002, -32.0353344 ] } },
+{ "type": "Feature", "properties": { "Nome": "Câmara de Comércio da Cidade de Rio Grande", "Endereço": "Rua, Pr. Xavier Ferreira, 430 - Centro", "Latitude": -32.0299331, "Longitude": -52.0955653 }, "geometry": { "type": "Point", "coordinates": [ -52.0955653, -32.0299331 ] } },
+{ "type": "Feature", "properties": { "Nome": "SMCAS - Secretaria de Município da Cidadania e Assistência Social", "Endereço": "R. Gen. Osório, 536 - Centro", "Latitude": -32.0296849, "Longitude": -52.1002874 }, "geometry": { "type": "Point", "coordinates": [ -52.1002874, -32.0296849 ] } },
+{ "type": "Feature", "properties": { "Nome": "Mercado Público de Rio Grande", "Endereço": "Pr. Xavier Ferreira, 444 - Centro", "Latitude": -32.030099, "Longitude": -52.0964559 }, "geometry": { "type": "Point", "coordinates": [ -52.0964559, -32.030099 ] } },
+{ "type": "Feature", "properties": { "Nome": "Secretaria Municipal de Coordenação e Planejamento", "Endereço": "R. Gen. Neto, 34 - Centro", "Latitude": -32.0302204, "Longitude": -52.0978747 }, "geometry": { "type": "Point", "coordinates": [ -52.0978747, -32.0302204 ] } },
+{ "type": "Feature", "properties": { "Nome": "Secretaria de Município de Gestão Administrativa", "Endereço": "R. Gen. Osório, 467 - Centro", "Latitude": -32.0301374, "Longitude": -52.0983072 }, "geometry": { "type": "Point", "coordinates": [ -52.0983072, -32.0301374 ] } },
+{ "type": "Feature", "properties": { "Nome": "Secretaria Municipal da Educação", "Endereço": "R. Mal. Floriano Peixoto, 103 - 2º andar", "Latitude": -32.0317201, "Longitude": -52.0903732 }, "geometry": { "type": "Point", "coordinates": [ -52.0903732, -32.0317201 ] } },
+{ "type": "Feature", "properties": { "Nome": "Secretaria de Município de Desenvolvimento, Inovação e Turismo.", "Endereço": "R. República do Líbano, 88 - Centro", "Latitude": -32.0329178, "Longitude": -52.0902875 }, "geometry": { "type": "Point", "coordinates": [ -52.0902875, -32.0329178 ] } },
+{ "type": "Feature", "properties": { "Nome": "Teatro Municipal de Rio Grande", "Endereço": "Av. Maj. Carlos Pinto, 312 - Cidade Nova", "Latitude": -32.0348584, "Longitude": -52.1069004 }, "geometry": { "type": "Point", "coordinates": [ -52.1069004, -32.0348584 ] } },
+{ "type": "Feature", "properties": { "Nome": "CAPS - Serelepe", "Endereço": "R. Marcílio Dias, 636 - Cidade Nova", "Latitude": -32.0433597, "Longitude": -52.1118348 }, "geometry": { "type": "Point", "coordinates": [ -52.1118348, -32.0433597 ] } },
+{ "type": "Feature", "properties": { "Nome": "Sindicato dos Servidores Municipais de Rio Grande", "Endereço": "R. Mal. Floriano Peixoto, 413 - Centro", "Latitude": -32.0310308, "Longitude": -52.0967089 }, "geometry": { "type": "Point", "coordinates": [ -52.0967089, -32.0310308 ] } },
+{ "type": "Feature", "properties": { "Nome": "Secretária Municipal de Saúde de Rio Grande ", "Endereço": "R. Mal. Floriano Peixoto, 05", "Latitude": -32.0322091, "Longitude": -52.0883855 }, "geometry": { "type": "Point", "coordinates": [ -52.0883855, -32.0322091 ] } }
+]
+}

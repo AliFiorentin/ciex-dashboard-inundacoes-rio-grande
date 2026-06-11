@@ -1,0 +1,10 @@
+{
+"type": "FeatureCollection",
+"name": "infra_seguranca_ATINGIDOS_rio_grande___cenario_maio_2024",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "Nome": "Policia Cívil - Delegacia Especializada para a Mulher", "Endereço": "R. Mal. Andréia, 44 - Centro", "Latitude": -32.0316079, "Longitude": -52.0892719 }, "geometry": { "type": "Point", "coordinates": [ -52.0892719, -32.0316079 ] } },
+{ "type": "Feature", "properties": { "Nome": "Polícia Federal de Rio Grande", "Endereço": "R. General Osório, 512 - Centro", "Latitude": -32.029893, "Longitude": -52.0996317 }, "geometry": { "type": "Point", "coordinates": [ -52.0996317, -32.029893 ] } },
+{ "type": "Feature", "properties": { "Nome": "Policia Ambiental (PATRAM) - Rio Grande - Brigada Militar", "Endereço": "R. Gen. Canabarro, n° 01 - Centro", "Latitude": -32.0269179, "Longitude": -52.1040532 }, "geometry": { "type": "Point", "coordinates": [ -52.1040532, -32.0269179 ] } }
+]
+}
