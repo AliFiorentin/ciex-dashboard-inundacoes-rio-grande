@@ -674,6 +674,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
     if (camadas.includes("Empresas")    && renderEmp?.features)  ids.push("empresas-cluster", "empresas-point");
     if (camadas.includes("Educação")    && renderEdu?.features)  ids.push("educacao-cluster", "educacao-point");
     if (camadas.includes("Saúde")       && renderSau?.features)  ids.push("saude-cluster",    "saude-point");
+    if (camadas.includes("Patrimônio Histórico") && renderPatrimonio?.features) ids.push("patrimonio-cluster", "patrimonio-point");
     if (camadas.includes("Infraestrutura")) {
       Object.keys(baseInfra).forEach(nome => {
         const geo = isCenarioAtivo ? atingidosInfra[nome] : baseInfra[nome];
@@ -684,9 +685,9 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       });
     }
     return ids;
-  }, [camadas, renderEmp, renderEdu, renderSau, baseInfra, atingidosInfra, isCenarioAtivo]);
+  }, [camadas, renderEmp, renderEdu, renderSau, renderPatrimonio, baseInfra, atingidosInfra, isCenarioAtivo]);
 
-  // Força ponto layers (empresas/educação/saúde) sempre no topo do z-order
+  // Força ponto layers (empresas/educação/saúde/patrimônio) sempre no topo do z-order
   useEffect(() => {
     if (!baseReady) return;
     const map = mapRef.current?.getMap();
@@ -695,11 +696,12 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       "empresas-cluster","empresas-count","empresas-point",
       "educacao-cluster","educacao-count","educacao-point",
       "saude-cluster","saude-count","saude-point",
+      "patrimonio-cluster","patrimonio-count","patrimonio-point",
     ];
     requestAnimationFrame(() => {
       ids.forEach(id => { try { if (map.getLayer(id)) map.moveLayer(id); } catch {} });
     });
-  }, [baseReady, camadas, renderEmp, renderEdu, renderSau]);
+  }, [baseReady, camadas, renderEmp, renderEdu, renderSau, renderPatrimonio]);
 
   // ─── Map click ────────────────────────────────────────────────────────────
 
@@ -727,7 +729,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       : [event.lngLat.lng, event.lngLat.lat];
 
     // Switch panel tab to match clicked layer
-    const srcToTab: Record<string, string> = { empresas: "empresas", educacao: "educacao", saude: "saude" };
+    const srcToTab: Record<string, string> = { empresas: "empresas", educacao: "educacao", saude: "saude", patrimonio: "patrimonio" };
     if (srcToTab[feature.source]) {
       setTabAtiva(srcToTab[feature.source]);
       setShowPainelAnalise(true);
@@ -802,6 +804,19 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
         </div>
       );
     }
+
+    if (source === "patrimonio") return (
+      <div className="flex flex-col gap-1.5 p-3 w-56 bg-white rounded-xl shadow-lg border border-slate-100">
+        <strong className="uppercase tracking-wider text-[10px] border-b border-slate-100 pb-1" style={{ color: COLORS.patrimonio }}>
+          🏛 Patrimônio Histórico ({normalizeTipologia(String(p.Tipologia || "")) || "N/A"})
+        </strong>
+        <span className="font-bold text-xs text-slate-800 leading-tight">{p.Nome || "Sem nome"}</span>
+        <div className="text-[10px] flex justify-between gap-2">
+          <span className="text-slate-500 uppercase font-bold">Endereço:</span>
+          <span className="text-slate-800 font-medium text-right">{p["ENDEREÇO"] || "—"}</span>
+        </div>
+      </div>
+    );
 
     if (source === "agricultura" && p.tipo_cultura) {
       const feat = (showAgricultura?.features ?? []).find((f: any) => f.properties?.tipo_cultura === p.tipo_cultura);
@@ -1024,6 +1039,11 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             <Layer id="saude-count"   type="symbol" filter={["has","point_count"]}       layout={{ visibility: (camadas.includes("Saúde") && !!renderSau?.features) ? "visible" : "none", "text-field": "{point_count_abbreviated}", "text-size": 11 }} paint={{ "text-color": "#fff" }} />
             <Layer id="saude-point"   type="circle" filter={["!",["has","point_count"]]} layout={{ visibility: (camadas.includes("Saúde") && !!renderSau?.features) ? "visible" : "none" }} paint={{ "circle-color": COLORS.saude, "circle-radius": 5, "circle-stroke-width": 1.5, "circle-stroke-color": "#fff" }} />
           </Source>
+          <Source id="patrimonio" type="geojson" data={camadas.includes("Patrimônio Histórico") && renderPatrimonio?.features ? renderPatrimonio : EMPTY_GEO} cluster clusterMaxZoom={14} clusterRadius={40}>
+            <Layer id="patrimonio-cluster" type="circle" filter={["has","point_count"]}       layout={{ visibility: (camadas.includes("Patrimônio Histórico") && !!renderPatrimonio?.features) ? "visible" : "none" }} paint={{ "circle-color": COLORS.patrimonio, "circle-radius": ["step",["get","point_count"],14,50,20,200,26], "circle-stroke-width": 2, "circle-stroke-color": "#fff" }} />
+            <Layer id="patrimonio-count"   type="symbol" filter={["has","point_count"]}       layout={{ visibility: (camadas.includes("Patrimônio Histórico") && !!renderPatrimonio?.features) ? "visible" : "none", "text-field": "{point_count_abbreviated}", "text-size": 11 }} paint={{ "text-color": "#fff" }} />
+            <Layer id="patrimonio-point"   type="circle" filter={["!",["has","point_count"]]} layout={{ visibility: (camadas.includes("Patrimônio Histórico") && !!renderPatrimonio?.features) ? "visible" : "none" }} paint={{ "circle-color": COLORS.patrimonio, "circle-radius": 5, "circle-stroke-width": 1.5, "circle-stroke-color": "#fff" }} />
+          </Source>
         </Map>
       </div>
 
@@ -1055,6 +1075,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             {camadas.includes("Empresas") && renderEmp?.features  && <LegendItem cor={COLORS.empresas} label="Empresas" />}
             {camadas.includes("Saúde")    && renderSau?.features  && <LegendItem cor={COLORS.saude}    label="Saúde" />}
             {camadas.includes("Educação") && renderEdu?.features  && <LegendItem cor={COLORS.educacao} label="Educação" />}
+            {camadas.includes("Patrimônio Histórico") && renderPatrimonio?.features && <LegendItem cor={COLORS.patrimonio} label="Patrimônio Histórico" />}
             {camadas.includes("Infraestrutura") && infraAtivas.map(nome => (
               <LegendItem key={`infra-${nome}`} cor={INFRA_COLORS[nome] ?? COLORS.infra} label={nome} area={["Quadras","Terrenos"].includes(nome)} />
             ))}
@@ -1114,6 +1135,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             { id: "Educação",                 label: "Educação",    icon: <GraduationCap size={12} strokeWidth={2.5} />, activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
             { id: "Agricultura",              label: "Agricultura", icon: <Sprout size={12} strokeWidth={2.5} />,        activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
             { id: "Uso e Cobertura da Terra", label: "Cobertura",   icon: <Leaf size={12} strokeWidth={2.5} />,          activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
+            { id: "Patrimônio Histórico",     label: "Patrimônio",  icon: <Landmark size={12} strokeWidth={2.5} />,      activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
           ].map(({ id, label, icon, activeClass, ringClass }) => (
             <button key={id} onClick={() => toggleCamada(id)}
               className={`h-8 px-3 rounded-md text-xs font-black active-press hover-lift flex items-center gap-1.5 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${ringClass} ${camadas.includes(id) ? activeClass : "text-white/80 border-white/20 hover:bg-white/10"}`}
@@ -1184,6 +1206,18 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 <SelectContent>
                   <SelectItem value="(todas)">(todas)</SelectItem>
                   {tiposUnicos.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {camadas.includes("Patrimônio Histórico") && (
+            <div className="flex flex-col gap-0.5 w-full overflow-hidden shrink-0">
+              <label className="text-[8px] font-bold text-amber-700 uppercase tracking-wider">Tipologia (Patrimônio)</label>
+              <Select value={filtroTipologia} onValueChange={setFiltroTipologia}>
+                <SelectTrigger className="h-6 border-amber-200/60 bg-amber-50/50 text-[10px] w-full [&>span]:truncate"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="(todas)">(todas)</SelectItem>
+                  {tipologiasUnicas.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
