@@ -30,3 +30,7 @@ Thumbs.db
 # configurações locais de ferramentas
 .claude/
 CLAUDE.md
+
+# tooling e documentação de processo (mantidos apenas localmente)
+/docs/
+/scripts/

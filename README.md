@@ -234,13 +234,13 @@ app/
   layout.tsx        — Layout raiz Next.js
   globals.css       — Estilos globais e Tailwind
 components/ui/      — Componentes shadcn/ui + wrapper MapLibre
-scripts/            — Conversores Python (GeoPandas/Rasterio) para geração dos dados
-                      (inclui converter_patrimonio_rio_grande.py)
 public/
   dados_convertidos/
     populacao_atingida.json — População total/atingida por cenário + coordenadas do raster
     rio_grande/     — GeoJSON, FGB e populacao.png prontos para consumo pelo browser
 ```
+
+> Os conversores Python (GeoPandas/Rasterio) que geram os dados são mantidos **fora do repositório** (localmente) e catalogados no gerenciador de projetos. O app só consome os arquivos estáticos já processados em `public/dados_convertidos/`.
 
 ---
 
