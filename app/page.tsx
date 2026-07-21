@@ -274,7 +274,6 @@ export default function Dashboard() {
   const [isLoading,            setIsLoading]            = useState(false);
   const [showLegenda,          setShowLegenda]          = useState(false);
 const [showMancha,           setShowMancha]           = useState(true);
-  const [showPopulacao,       setShowPopulacao]       = useState(true);
 const [showListaLogradouros, setShowListaLogradouros] = useState(false);
   const [showListaEscolas,     setShowListaEscolas]     = useState(false);
   const [showListaHospitais,   setShowListaHospitais]   = useState(false);
@@ -643,20 +642,14 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
     if (filtroTipo === "(todas)") return baseSaude;
     return baseSaude ? { ...baseSaude, features: (baseSaude.features || []).filter((f: any) => String(f.properties?.co_tipo_estabelecimento || "").toLowerCase() === filtroTipo.toLowerCase()) } : null;
   }, [baseSaude, filtroTipo]);
-  const baseHeritageFiltrado = useMemo(() => {
-    if (filtroTipologia === "(todas)") return basePatrimonio;
-    return basePatrimonio ? { ...basePatrimonio, features: (basePatrimonio.features || []).filter((f: any) => normalizeTipologia(String(f.properties?.Tipologia || "")) === filtroTipologia) } : null;
-  }, [basePatrimonio, filtroTipologia]);
 
   // Métricas calculadas sobre o dado filtrado atualmente exibido no mapa
   const renderEmpMetrics  = useMemo(() => calcEmp(renderEmp),       [renderEmp]);
   const renderEduMetrics  = useMemo(() => calcEdu(renderEdu),       [renderEdu]);
   const renderSauMetrics  = useMemo(() => calcSau(renderSau),       [renderSau]);
-  const renderPatrimonioMetrics = useMemo(() => calcPatrimonio(renderPatrimonio), [renderPatrimonio]);
   const baseEmpFiltMetrics = useMemo(() => calcEmp(baseEmpFiltrado), [baseEmpFiltrado]);
   const baseEduFiltMetrics = useMemo(() => calcEdu(baseEduFiltrado), [baseEduFiltrado]);
   const baseSauFiltMetrics = useMemo(() => calcSau(baseSauFiltrado), [baseSauFiltrado]);
-  const baseHeritageFiltMetrics = useMemo(() => calcPatrimonio(baseHeritageFiltrado), [baseHeritageFiltrado]);
 
   const setoresChart = useMemo(() => {
     const src = isCenarioAtivo ? atingidosEmpresas : baseEmpresas;
@@ -963,7 +956,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
           )}
 
           {/* Raster de População */}
-          {camadas.includes("População") && showPopulacao && popData?.["Rio Grande"] && (
+          {camadas.includes("População") && popData?.["Rio Grande"] && (
             <Source
               id="populacao-img"
               type="image"
@@ -1111,7 +1104,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 <LegendItem key={`cob-${tipo}`} cor={cor} label={tipo} area />
               ))
             )}
-            {camadas.includes("População") && showPopulacao && popData?.["Rio Grande"] && (
+            {camadas.includes("População") && popData?.["Rio Grande"] && (
               <div className="flex items-center gap-2 mt-1">
                 <div className="w-16 h-3 rounded-sm shrink-0" style={{ background: "linear-gradient(to right, #0d0887, #9c179e, #ed7953, #f0f921)" }} />
                 <div className="flex flex-col leading-none gap-0.5">
@@ -1270,22 +1263,6 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
               </DropdownMenu>
             </div>
           )}
-          {camadas.includes("População") && (
-            <div className="flex flex-col gap-0.5 w-full shrink-0">
-              <label className="text-[8px] font-bold uppercase tracking-wider" style={{ color: "#9c179e" }}>Heatmap de População</label>
-              <button
-                onClick={() => setShowPopulacao(p => !p)}
-                className="h-6 w-full rounded text-[10px] font-bold border transition-colors duration-150"
-                style={{
-                  backgroundColor: showPopulacao ? "#9c179e20" : "transparent",
-                  borderColor: showPopulacao ? "#9c179e" : C.border,
-                  color: showPopulacao ? "#9c179e" : C.muted,
-                }}
-              >
-                {showPopulacao ? "Visível" : "Oculta"}
-              </button>
-            </div>
-          )}
           {isCenarioAtivo && (
             <div className="flex flex-col gap-0.5 w-full shrink-0">
               <label className="text-[8px] font-bold uppercase tracking-wider" style={{ color: COLORS.cenario }}>Mancha de Inundação</label>
@@ -1376,7 +1353,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                         <div className="text-[9px] font-bold text-purple-500 uppercase tracking-wider leading-none mb-0.5">Pop. Total</div>
                         <div className="flex items-baseline gap-0.5">
                           <span className="text-[13px] font-black text-purple-800 tabular-nums">
-                            {popData["Rio Grande"].pop_total.toLocaleString("pt-BR")}
+                            {formatoBr(popData["Rio Grande"].pop_total)}
                           </span>
                           <span className="text-[9px] text-purple-400">hab.</span>
                         </div>
@@ -1388,7 +1365,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                           </div>
                           <div className="flex items-baseline gap-0.5 justify-end">
                             <span className="text-[13px] font-black text-red-700 tabular-nums">
-                              {popCen.pop_atingida.toLocaleString("pt-BR")}
+                              {formatoBr(popCen.pop_atingida)}
                             </span>
                             <span className="text-[9px] text-red-400">
                               ({popCen.pct_atingida.toFixed(1)}%)
@@ -1852,8 +1829,6 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                     </>
                   );
                 })()}
-
-
 
                 <p className="text-[9px] italic mt-3 pt-2 border-t" style={{ color: C.muted, borderColor: C.border }}>Fonte: Levantamento de Patrimônio Histórico — Rio Grande/RS</p>
               </TabsContent>
