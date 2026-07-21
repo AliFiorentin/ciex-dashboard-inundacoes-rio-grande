@@ -260,13 +260,14 @@ export default function Dashboard() {
 
   const [cenario, setCenario] = useState<string>("(nenhum)");
 
-  const [camadas,     setCamadas]     = useState<string[]>(["Empresas", "Saúde", "Educação", "Agricultura", "Uso e Cobertura da Terra", "Infraestrutura"]);
+  const [camadas,     setCamadas]     = useState<string[]>(["Empresas", "Saúde", "Educação", "Agricultura", "Uso e Cobertura da Terra", "Infraestrutura", "Patrimônio Histórico"]);
   const [infraAtivas, setInfraAtivas] = useState<string[]>(["Logradouros", "Quadras", "Terrenos"]);
   const [tabAtiva,    setTabAtiva]    = useState("empresas");
 
   const [filtroSetor, setFiltroSetor] = useState("(todos)");
   const [filtroDep,   setFiltroDep]   = useState("(todas)");
   const [filtroTipo,  setFiltroTipo]  = useState("(todas)");
+  const [filtroTipologia, setFiltroTipologia] = useState("(todas)");
 
   const [showPainelAnalise,    setShowPainelAnalise]    = useState(true);
   const [showFiltros,          setShowFiltros]          = useState(true);
@@ -278,6 +279,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
   const [showListaHospitais,   setShowListaHospitais]   = useState(false);
   const [showListaUBS,         setShowListaUBS]         = useState(false);
   const [showListaAmbulat,     setShowListaAmbulat]     = useState(false);
+  const [showListaPatrimonio,  setShowListaPatrimonio]  = useState(false);
 
   const [baseEmpresas,  setBaseEmpresas]  = useState<any>(null);
   const [baseEducacao,  setBaseEducacao]  = useState<any>(null);
@@ -285,6 +287,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
   const [baseCobertura,    setBaseCobertura]    = useState<any>(null);
   const [baseAgricultura,  setBaseAgricultura]  = useState<any>(null);
   const [baseInfra,        setBaseInfra]        = useState<Record<string, any>>({});
+  const [basePatrimonio,   setBasePatrimonio]   = useState<any>(null);
 
   const [atingidosEmpresas,    setAtingidosEmpresas]    = useState<any>(null);
   const [atingidosEducacao,    setAtingidosEducacao]    = useState<any>(null);
@@ -292,6 +295,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
   const [atingidosCobertura,   setAtingidosCobertura]   = useState<any>(null);
   const [atingidosAgricultura, setAtingidosAgricultura] = useState<any>(null);
   const [atingidosInfra,    setAtingidosInfra]    = useState<Record<string, any>>({});
+  const [atingidosPatrimonio, setAtingidosPatrimonio] = useState<any>(null);
   const [manchaCenario,     setManchaCenario]     = useState<any>(null);
 
   const [baseReady, setBaseReady] = useState(false);
@@ -328,6 +332,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       fetch("/dados_convertidos/rio_grande/saude_BASE.geojson",    { signal }).then(r => r.ok ? r.json() : null),
       loadFGB("/dados_convertidos/rio_grande/cobertura_BASE.fgb",   signal),
       loadFGB("/dados_convertidos/rio_grande/agricultura_BASE.fgb", signal),
+      fetch("/dados_convertidos/rio_grande/patrimonio_BASE.geojson", { signal }).then(r => r.ok ? r.json() : null),
       // Mancha
       fetch(`/dados_convertidos/rio_grande/cenarios/${sSlug}.geojson`, { signal }).then(r => r.ok ? r.json() : null),
       // Atingidos
@@ -336,13 +341,14 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       fetch(`/dados_convertidos/rio_grande/cenarios/saude_ATINGIDOS_${sSlug}.geojson`,    { signal }).then(r => r.ok ? r.json() : null),
       loadFGB(`/dados_convertidos/rio_grande/cenarios/cobertura_ATINGIDOS_${sSlug}.fgb`,   signal),
       loadFGB(`/dados_convertidos/rio_grande/cenarios/agricultura_ATINGIDOS_${sSlug}.fgb`, signal),
+      fetch(`/dados_convertidos/rio_grande/cenarios/patrimonio_ATINGIDOS_${sSlug}.geojson`, { signal }).then(r => r.ok ? r.json() : null),
       Promise.all(infraAtingidosPromises),
-    ]).then(([emp, edu, sau, cob, agr, mancha, aEmp, aEdu, aSau, aCob, aAgr, infraResults]) => {
+    ]).then(([emp, edu, sau, cob, agr, patr, mancha, aEmp, aEdu, aSau, aCob, aAgr, aPatr, infraResults]) => {
       if (signal.aborted) return;
 
-      setBaseEmpresas(emp); setBaseEducacao(edu); setBaseSaude(sau); setBaseCobertura(cob); setBaseAgricultura(agr);
+      setBaseEmpresas(emp); setBaseEducacao(edu); setBaseSaude(sau); setBaseCobertura(cob); setBaseAgricultura(agr); setBasePatrimonio(patr);
       setManchaCenario(mancha);
-      setAtingidosEmpresas(aEmp); setAtingidosEducacao(aEdu); setAtingidosSaude(aSau); setAtingidosCobertura(aCob); setAtingidosAgricultura(aAgr);
+      setAtingidosEmpresas(aEmp); setAtingidosEducacao(aEdu); setAtingidosSaude(aSau); setAtingidosCobertura(aCob); setAtingidosAgricultura(aAgr); setAtingidosPatrimonio(aPatr);
       const infraData: Record<string, any> = {};
       (infraResults as any[]).forEach(({ infra, d }) => { if (d) infraData[infra] = d; });
       setAtingidosInfra(infraData);
@@ -371,7 +377,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       const map = mapRef.current?.getMap();
       if (map) map.flyTo({ center: [-52.22, -32.09], zoom: 10.8, duration: 5000 });
       setTimeout(() => {
-        setManchaCenario(null); setAtingidosEmpresas(null); setAtingidosEducacao(null); setAtingidosSaude(null); setAtingidosCobertura(null); setAtingidosAgricultura(null);
+        setManchaCenario(null); setAtingidosEmpresas(null); setAtingidosEducacao(null); setAtingidosSaude(null); setAtingidosCobertura(null); setAtingidosAgricultura(null); setAtingidosPatrimonio(null);
         setAtingidosInfra(prev => Object.keys(prev).length === 0 ? prev : {});
       }, 5000);
       return;
@@ -415,6 +421,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
           fetch(`/dados_convertidos/rio_grande/cenarios/saude_ATINGIDOS_${sSlug}.geojson`,    { signal }).then(r => r.ok ? r.json() : null),
           loadFGB(`/dados_convertidos/rio_grande/cenarios/cobertura_ATINGIDOS_${sSlug}.fgb`,   signal),
           loadFGB(`/dados_convertidos/rio_grande/cenarios/agricultura_ATINGIDOS_${sSlug}.fgb`, signal),
+          fetch(`/dados_convertidos/rio_grande/cenarios/patrimonio_ATINGIDOS_${sSlug}.geojson`, { signal }).then(r => r.ok ? r.json() : null),
           Promise.all(infraPromises)
         ]);
 
@@ -422,15 +429,16 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       })
       .then((res) => {
         if (!res || signal.aborted) return;
-        const [[emp, edu, sau, cob, agr, infraResults], mancha] = res;
-        
+        const [[emp, edu, sau, cob, agr, patr, infraResults], mancha] = res;
+
         setManchaCenario(mancha);
-        setAtingidosEmpresas(emp); 
-        setAtingidosEducacao(edu); 
-        setAtingidosSaude(sau); 
-        setAtingidosCobertura(cob); 
+        setAtingidosEmpresas(emp);
+        setAtingidosEducacao(edu);
+        setAtingidosSaude(sau);
+        setAtingidosCobertura(cob);
         setAtingidosAgricultura(agr);
-        
+        setAtingidosPatrimonio(patr);
+
         const newInfraData: Record<string, any> = {};
         (infraResults as any[]).forEach(({ infra, d }) => { if (d) newInfraData[infra] = d; });
         setAtingidosInfra(prev => ({ ...prev, ...newInfraData }));
@@ -528,6 +536,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
   const showSau  = baseReady ? (isCenarioAtivo ? atingidosSaude    : baseSaude)    : null;
   const showCobertura   = baseReady ? (isCenarioAtivo ? atingidosCobertura   : baseCobertura)   : null;
   const showAgricultura = baseReady ? (isCenarioAtivo ? atingidosAgricultura : baseAgricultura) : null;
+  const showPatrimonio  = baseReady ? (isCenarioAtivo ? atingidosPatrimonio  : basePatrimonio)  : null;
 
   const renderEmp = useMemo(() => {
     if (!showEmp?.features) return null;
@@ -547,9 +556,16 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
     return { ...showSau, features: showSau.features.filter((f: any) => String(f.properties?.co_tipo_estabelecimento || "").toLowerCase() === filtroTipo.toLowerCase()) };
   }, [showSau, filtroTipo]);
 
+  const renderPatrimonio = useMemo(() => {
+    if (!showPatrimonio?.features) return null;
+    if (filtroTipologia === "(todas)") return showPatrimonio;
+    return { ...showPatrimonio, features: showPatrimonio.features.filter((f: any) => normalizeTipologia(String(f.properties?.Tipologia || "")) === filtroTipologia) };
+  }, [showPatrimonio, filtroTipologia]);
+
   const metricasEmp = useMemo(() => ({ base: calcEmp(baseEmpresas), impacto: calcEmp(atingidosEmpresas) }), [baseEmpresas, atingidosEmpresas]);
   const metricasEdu = useMemo(() => ({ base: calcEdu(baseEducacao), impacto: calcEdu(atingidosEducacao) }), [baseEducacao, atingidosEducacao]);
   const metricasSau = useMemo(() => ({ base: calcSau(baseSaude),    impacto: calcSau(atingidosSaude)    }), [baseSaude,    atingidosSaude]);
+  const metricasPatrimonio = useMemo(() => ({ base: calcPatrimonio(basePatrimonio), impacto: calcPatrimonio(atingidosPatrimonio) }), [basePatrimonio, atingidosPatrimonio]);
 
   const featsFiltrados = (gdf: any): { f: any; ha: number }[] =>
     (gdf?.features ?? [])
@@ -580,6 +596,11 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
     if (!baseSaude?.features) return [];
     return Array.from(new Set(baseSaude.features.map((f: any) => String(f.properties?.co_tipo_estabelecimento || "")).filter(Boolean))).sort() as string[];
   }, [baseSaude]);
+
+  const tipologiasUnicas = useMemo(() => {
+    if (!basePatrimonio?.features) return [];
+    return Array.from(new Set(basePatrimonio.features.map((f: any) => normalizeTipologia(String(f.properties?.Tipologia || ""))).filter(Boolean))).sort() as string[];
+  }, [basePatrimonio]);
 
   const empPorSetor = useMemo(() => {
     const agrega = (gdf: any): Record<string, number> => {
@@ -618,14 +639,20 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
     if (filtroTipo === "(todas)") return baseSaude;
     return baseSaude ? { ...baseSaude, features: (baseSaude.features || []).filter((f: any) => String(f.properties?.co_tipo_estabelecimento || "").toLowerCase() === filtroTipo.toLowerCase()) } : null;
   }, [baseSaude, filtroTipo]);
+  const baseHeritageFiltrado = useMemo(() => {
+    if (filtroTipologia === "(todas)") return basePatrimonio;
+    return basePatrimonio ? { ...basePatrimonio, features: (basePatrimonio.features || []).filter((f: any) => normalizeTipologia(String(f.properties?.Tipologia || "")) === filtroTipologia) } : null;
+  }, [basePatrimonio, filtroTipologia]);
 
   // Métricas calculadas sobre o dado filtrado atualmente exibido no mapa
   const renderEmpMetrics  = useMemo(() => calcEmp(renderEmp),       [renderEmp]);
   const renderEduMetrics  = useMemo(() => calcEdu(renderEdu),       [renderEdu]);
   const renderSauMetrics  = useMemo(() => calcSau(renderSau),       [renderSau]);
+  const renderPatrimonioMetrics = useMemo(() => calcPatrimonio(renderPatrimonio), [renderPatrimonio]);
   const baseEmpFiltMetrics = useMemo(() => calcEmp(baseEmpFiltrado), [baseEmpFiltrado]);
   const baseEduFiltMetrics = useMemo(() => calcEdu(baseEduFiltrado), [baseEduFiltrado]);
   const baseSauFiltMetrics = useMemo(() => calcSau(baseSauFiltrado), [baseSauFiltrado]);
+  const baseHeritageFiltMetrics = useMemo(() => calcPatrimonio(baseHeritageFiltrado), [baseHeritageFiltrado]);
 
   const setoresChart = useMemo(() => {
     const src = isCenarioAtivo ? atingidosEmpresas : baseEmpresas;
