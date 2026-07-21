@@ -10,7 +10,7 @@ import * as flatgeobuf from "flatgeobuf";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 import {
-  Building2, GraduationCap, HeartPulse, Wrench, Leaf, Sprout,
+  Building2, GraduationCap, HeartPulse, Wrench, Leaf, Sprout, Landmark,
   Download, Printer, EyeOff, SlidersHorizontal, PanelLeft,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +28,7 @@ const COLORS = {
   cenario:     "#1f77b4",
   infra:       "#f59e0b",
   agricultura: "#6B8E23",
+  patrimonio:  "#a16207",
 };
 
 const INFRA_COLORS: Record<string, string> = {
@@ -142,6 +143,9 @@ const scenarioSlug = (cen: string) => `rio_grande___${slugify(cen)}`;
 
 const normalizeDep = (val: string) => DEP_LABELS[val] || val;
 
+// Remove prefixo numérico de classificação (ex.: "6- Arquitetura Civil Privada" → "Arquitetura Civil Privada")
+const normalizeTipologia = (val: string) => val.replace(/^\d+-\s*/, "").trim();
+
 const formatoBr = (num: number, casas = 0) =>
   num.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
 
@@ -206,6 +210,16 @@ const calcSau = (base: any) => {
     STAFF_COLS.forEach(c => (staff[c] += f.properties?.[c] || 0));
   });
   return { unidades: base.features.length, tipos, staff };
+};
+
+const calcPatrimonio = (base: any) => {
+  if (!base?.features) return { total: 0, tipos: {} as Record<string, number> };
+  const tipos: Record<string, number> = {};
+  base.features.forEach((f: any) => {
+    const t = normalizeTipologia(String(f.properties?.Tipologia || ""));
+    if (t) tipos[t] = (tipos[t] || 0) + 1;
+  });
+  return { total: base.features.length, tipos };
 };
 
 // Conta features onde prop numérica == 1 (flag 0/1) ou string "1"/"sim"/"true"
