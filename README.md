@@ -38,8 +38,10 @@ A aplicação é um dashboard de página única construído com **Next.js + Type
 | **Terrenos** | Prefeitura de Rio Grande | Lotes com informações de saneamento (água, esgoto, coleta de lixo) |
 | **Prédios Públicos** | Prefeitura de Rio Grande | Equipamentos públicos municipais |
 | **Segurança** | Prefeitura de Rio Grande | Postos e instalações de segurança pública |
+| **Patrimônio Histórico** | Levantamento de Patrimônio Histórico — Rio Grande/RS | Bens tombados/inventariados (355 pontos) com nome, endereço e tipologia arquitetônica |
 | **Uso e Cobertura da Terra** | MapaBiomas Coleção 10 (2024) | Classes: Silvicultura, Campo Alagado, Formação Campestre, Mosaico de Usos, Restinga Arbórea, Restinga Herbácea |
 | **Agricultura** | MapaBiomas Coleção 10 (2024) | Culturas: Soja, Arroz, Outras Lavouras Temporárias |
+| **População** | WorldPop | Grade populacional (hab./pixel) renderizada como heatmap raster; população total e atingida por cenário pré-computadas |
 | **Cenários de inundação** | Modelagem hidrológica | Manchas de inundação vetoriais do evento de Maio de 2024 e cenário expandido (+50%) |
 
 ---
@@ -116,12 +118,27 @@ Feições com $a_i < 0{,}5\;\text{ha}$ são descartadas (ruído de vetorização
 
 $$A_k = \sum_{\substack{i \,\in\, \hat{N},\; k_i = k \\ a_i \,\geq\, 0{,}5}} a_i \qquad \%\,\text{área}_k = \frac{A_{k,\,\hat{N}}}{A_{k,\,N}} \times 100$$
 
+#### Patrimônio Histórico
+
+Cada feição é um bem patrimonial (ponto) com os campos `Nome`, `ENDEREÇO` e `Tipologia`. A seleção dos atingidos usa a mesma junção espacial ponto-em-polígono (`intersects`) das demais camadas de ponto. O campo `Tipologia` é normalizado no cliente removendo o prefixo numérico de classificação (ex.: `"6- Arquitetura Civil Privada"` → `"Arquitetura Civil Privada"`), de modo que categorias duplicadas por prefixo sejam agregadas. As métricas são a contagem total e a distribuição por tipologia:
+
+$$\text{Total} = |\hat{N}| \qquad T_k = |\{i \in \hat{N} : \text{tipologia}_i = k\}| \qquad \%\,\text{atingido} = \frac{|\hat{N}|}{|N|} \times 100$$
+
+#### População
+
+Diferente das demais camadas, a população **não** é um recorte vetorial: é uma grade populacional (WorldPop) exibida como *heatmap raster* sobreposto ao mapa. Os valores de população total do município e população atingida por cenário são pré-computados offline e servidos em um único `populacao_atingida.json`:
+
+$$\%\,\text{pop. atingida} = \frac{\text{pop. atingida}}{\text{pop. total}} \times 100$$
+
+O KPI de população é lido diretamente desse JSON (não é recalculado no cliente). A imagem raster (`populacao.png`) é posicionada pelas quatro coordenadas de canto presentes no JSON.
+
 ### 3. Formatos de arquivo e desempenho
 
 | Formato | Camadas | Motivo |
 |---|---|---|
-| `.geojson` | Empresas, Educação, Saúde, Logradouros, Prédios Públicos, Segurança, Cenário | Tamanho reduzido, parsing nativo |
+| `.geojson` | Empresas, Educação, Saúde, Patrimônio Histórico, Logradouros, Prédios Públicos, Segurança, Cenário | Tamanho reduzido, parsing nativo |
 | `.fgb` (FlatGeobuf) | Cobertura, Agricultura, Quadras, Terrenos | Streaming binário eficiente para arquivos grandes |
+| `.png` + `.json` | População | Imagem raster (heatmap) posicionada por coordenadas de canto + métricas pré-computadas por cenário |
 
 O FlatGeobuf é carregado em stream via `flatgeobuf.geojson.deserialize`, sem necessidade de carregar o arquivo inteiro na memória antes de renderizar. Terrenos (~28 MB) solicita confirmação do usuário antes do carregamento.
 
@@ -132,10 +149,11 @@ Dados de base são carregados uma única vez na inicialização. Dados atingidos
 Camadas renderizadas em ordem crescente de z-index (determinada pela posição no JSX, sem uso de `beforeId`):
 
 1. Polígono de inundação (cenário)
-2. Uso e cobertura da terra
-3. Agricultura
-4. Infraestrutura (geometrias fill/line/point selecionadas por filtro de tipo)
-5. Empresas, Saúde, Educação (pontos clusterizados — renderizados por cima)
+2. Heatmap de População (raster, ao fundo)
+3. Uso e cobertura da terra
+4. Agricultura
+5. Infraestrutura (geometrias fill/line/point selecionadas por filtro de tipo)
+6. Empresas, Saúde, Educação, Patrimônio Histórico (pontos clusterizados — renderizados por cima)
 
 Pontos são clusterizados automaticamente pelo MapLibre GL (raio 50 px). A bounding box da mancha ativa é calculada via `turf.bbox` para reposicionamento automático do mapa.
 
@@ -217,9 +235,11 @@ app/
   globals.css       — Estilos globais e Tailwind
 components/ui/      — Componentes shadcn/ui + wrapper MapLibre
 scripts/            — Conversores Python (GeoPandas/Rasterio) para geração dos dados
+                      (inclui converter_patrimonio_rio_grande.py)
 public/
   dados_convertidos/
-    rio_grande/     — GeoJSON e FGB prontos para consumo pelo browser
+    populacao_atingida.json — População total/atingida por cenário + coordenadas do raster
+    rio_grande/     — GeoJSON, FGB e populacao.png prontos para consumo pelo browser
 ```
 
 ---
@@ -246,3 +266,4 @@ Doutorando em Economia Aplicada — Universidade Federal do Rio Grande do Sul (U
 Desenvolvido com apoio do **BID (Banco Interamericano de Desenvolvimento)** e da **Prefeitura Municipal de Rio Grande/RS**.
 
 Dados de uso e cobertura da terra: [MapaBiomas](https://mapbiomas.org/) — Coleção 10 (2024).
+Dados de grade populacional: [WorldPop](https://www.worldpop.org/).
