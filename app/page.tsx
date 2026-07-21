@@ -1115,7 +1115,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
               <div className="flex items-center gap-2 mt-1">
                 <div className="w-16 h-3 rounded-sm shrink-0" style={{ background: "linear-gradient(to right, #0d0887, #9c179e, #ed7953, #f0f921)" }} />
                 <div className="flex flex-col leading-none gap-0.5">
-                  <span className="text-[10px] font-medium" style={{ color: C.text }}>Pop. (hab./pixel)</span>
+                  <span className="text-[10px] font-medium" style={{ color: C.primary }}>Pop. (hab./pixel)</span>
                   <span className="text-[8px]" style={{ color: C.muted }}>baixo → alto</span>
                 </div>
               </div>
