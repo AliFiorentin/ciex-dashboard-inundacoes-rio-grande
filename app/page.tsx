@@ -10,7 +10,7 @@ import * as flatgeobuf from "flatgeobuf";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 import {
-  Building2, GraduationCap, HeartPulse, Wrench, Leaf, Sprout, Landmark,
+  Building2, GraduationCap, HeartPulse, Wrench, Leaf, Sprout, Landmark, Users,
   Download, Printer, EyeOff, SlidersHorizontal, PanelLeft,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -260,7 +260,7 @@ export default function Dashboard() {
 
   const [cenario, setCenario] = useState<string>("(nenhum)");
 
-  const [camadas,     setCamadas]     = useState<string[]>(["Empresas", "Saúde", "Educação", "Agricultura", "Uso e Cobertura da Terra", "Infraestrutura", "Patrimônio Histórico"]);
+  const [camadas,     setCamadas]     = useState<string[]>(["Empresas", "Saúde", "Educação", "Agricultura", "Uso e Cobertura da Terra", "Infraestrutura", "Patrimônio Histórico", "População"]);
   const [infraAtivas, setInfraAtivas] = useState<string[]>(["Logradouros", "Quadras", "Terrenos"]);
   const [tabAtiva,    setTabAtiva]    = useState("empresas");
 
@@ -274,17 +274,18 @@ export default function Dashboard() {
   const [isLoading,            setIsLoading]            = useState(false);
   const [showLegenda,          setShowLegenda]          = useState(false);
 const [showMancha,           setShowMancha]           = useState(true);
+  const [showPopulacao,       setShowPopulacao]       = useState(true);
 const [showListaLogradouros, setShowListaLogradouros] = useState(false);
   const [showListaEscolas,     setShowListaEscolas]     = useState(false);
   const [showListaHospitais,   setShowListaHospitais]   = useState(false);
   const [showListaUBS,         setShowListaUBS]         = useState(false);
   const [showListaAmbulat,     setShowListaAmbulat]     = useState(false);
-  const [showListaPatrimonio,  setShowListaPatrimonio]  = useState(false);
 
   const [baseEmpresas,  setBaseEmpresas]  = useState<any>(null);
   const [baseEducacao,  setBaseEducacao]  = useState<any>(null);
   const [baseSaude,     setBaseSaude]     = useState<any>(null);
-  const [baseCobertura,    setBaseCobertura]    = useState<any>(null);
+  const [popData,       setPopData]       = useState<any>(null);
+  const [baseCobertura, setBaseCobertura] = useState<any>(null);
   const [baseAgricultura,  setBaseAgricultura]  = useState<any>(null);
   const [baseInfra,        setBaseInfra]        = useState<Record<string, any>>({});
   const [basePatrimonio,   setBasePatrimonio]   = useState<any>(null);
@@ -342,9 +343,12 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       loadFGB(`/dados_convertidos/rio_grande/cenarios/cobertura_ATINGIDOS_${sSlug}.fgb`,   signal),
       loadFGB(`/dados_convertidos/rio_grande/cenarios/agricultura_ATINGIDOS_${sSlug}.fgb`, signal),
       fetch(`/dados_convertidos/rio_grande/cenarios/patrimonio_ATINGIDOS_${sSlug}.geojson`, { signal }).then(r => r.ok ? r.json() : null),
+      fetch("/dados_convertidos/populacao_atingida.json", { signal }).then(r => r.ok ? r.json() : null),
       Promise.all(infraAtingidosPromises),
-    ]).then(([emp, edu, sau, cob, agr, patr, mancha, aEmp, aEdu, aSau, aCob, aAgr, aPatr, infraResults]) => {
+    ]).then(([emp, edu, sau, cob, agr, patr, mancha, aEmp, aEdu, aSau, aCob, aAgr, aPatr, popJson, infraResults]) => {
       if (signal.aborted) return;
+
+      if (popJson) setPopData(popJson);
 
       setBaseEmpresas(emp); setBaseEducacao(edu); setBaseSaude(sau); setBaseCobertura(cob); setBaseAgricultura(agr); setBasePatrimonio(patr);
       setManchaCenario(mancha);
@@ -896,6 +900,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
     if (camadas.includes("Empresas")) add(atingidosEmpresas || baseEmpresas, "Empresas");
     if (camadas.includes("Educação")) add(atingidosEducacao || baseEducacao, "Educação");
     if (camadas.includes("Saúde"))    add(atingidosSaude    || baseSaude,    "Saúde");
+    if (camadas.includes("Patrimônio Histórico")) add(atingidosPatrimonio || basePatrimonio, "Patrimônio Histórico");
     if (camadas.includes("Infraestrutura")) {
       infraAtivas.forEach(infra => {
         const src = isCenarioAtivo ? atingidosInfra[infra] : baseInfra[infra];
@@ -904,17 +909,18 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
     }
     const sufixo = cenario !== "(nenhum)" ? `_${slugify(cenario)}` : "";
     XLSX.writeFile(wb, `Impacto_Rio_Grande${sufixo}.xlsx`);
-  }, [camadas, cenario, isCenarioAtivo, infraAtivas, atingidosEmpresas, baseEmpresas, atingidosEducacao, baseEducacao, atingidosSaude, baseSaude, atingidosInfra, baseInfra]);
+  }, [camadas, cenario, isCenarioAtivo, infraAtivas, atingidosEmpresas, baseEmpresas, atingidosEducacao, baseEducacao, atingidosSaude, baseSaude, atingidosInfra, baseInfra, atingidosPatrimonio, basePatrimonio]);
 
   // ─── Helpers de layout ────────────────────────────────────────────────────
 
   const possuiInfra = true;
-  const temCamadaTabular = camadas.includes("Empresas") || camadas.includes("Educação") || camadas.includes("Saúde") || camadas.includes("Agricultura") || camadas.includes("Uso e Cobertura da Terra") || camadas.includes("Infraestrutura");
+  const temCamadaTabular = camadas.includes("Empresas") || camadas.includes("Educação") || camadas.includes("Saúde") || camadas.includes("Agricultura") || camadas.includes("Uso e Cobertura da Terra") || camadas.includes("Infraestrutura") || camadas.includes("Patrimônio Histórico");
 
   useEffect(() => {
     if (tabAtiva === "agricultura" && !camadas.includes("Agricultura"))              setTabAtiva("empresas");
     if (tabAtiva === "cobertura"   && !camadas.includes("Uso e Cobertura da Terra")) setTabAtiva("empresas");
     if (tabAtiva === "infra" && (!camadas.includes("Infraestrutura") || infraAtivas.length === 0)) setTabAtiva("empresas");
+    if (tabAtiva === "patrimonio" && !camadas.includes("Patrimônio Histórico")) setTabAtiva("empresas");
   }, [camadas, infraAtivas, tabAtiva]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -953,6 +959,22 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             <Source id="cenario" type="geojson" data={manchaCenario}>
               <Layer id="cenario-fill" type="fill"  paint={{ "fill-color": COLORS.cenario, "fill-opacity": 0.18 }} />
               <Layer id="cenario-line" type="line"  paint={{ "line-color": COLORS.cenario, "line-width": 2, "line-opacity": 0.8 }} />
+            </Source>
+          )}
+
+          {/* Raster de População */}
+          {camadas.includes("População") && showPopulacao && popData?.["Rio Grande"] && (
+            <Source
+              id="populacao-img"
+              type="image"
+              url="/dados_convertidos/rio_grande/populacao.png"
+              coordinates={popData["Rio Grande"].coordinates as [[number,number],[number,number],[number,number],[number,number]]}
+            >
+              <Layer
+                id="populacao-raster"
+                type="raster"
+                paint={{ "raster-opacity": 0.65, "raster-resampling": "nearest" }}
+              />
             </Source>
           )}
 
@@ -1089,6 +1111,15 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 <LegendItem key={`cob-${tipo}`} cor={cor} label={tipo} area />
               ))
             )}
+            {camadas.includes("População") && showPopulacao && popData?.["Rio Grande"] && (
+              <div className="flex items-center gap-2 mt-1">
+                <div className="w-16 h-3 rounded-sm shrink-0" style={{ background: "linear-gradient(to right, #0d0887, #9c179e, #ed7953, #f0f921)" }} />
+                <div className="flex flex-col leading-none gap-0.5">
+                  <span className="text-[10px] font-medium" style={{ color: C.text }}>Pop. (hab./pixel)</span>
+                  <span className="text-[8px]" style={{ color: C.muted }}>baixo → alto</span>
+                </div>
+              </div>
+            )}
             {manchaCenario && showMancha && <LegendItem cor={COLORS.cenario} label={cenario} area />}
           </div>
         )}
@@ -1128,7 +1159,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
         </div>
 
         {/* Camadas */}
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-1 items-center">
           {[
             { id: "Empresas",                 label: "Empresas",    icon: <Building2 size={12} strokeWidth={2.5} />,     activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
             { id: "Saúde",                    label: "Saúde",       icon: <HeartPulse size={12} strokeWidth={2.5} />,    activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
@@ -1136,9 +1167,10 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             { id: "Agricultura",              label: "Agricultura", icon: <Sprout size={12} strokeWidth={2.5} />,        activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
             { id: "Uso e Cobertura da Terra", label: "Cobertura",   icon: <Leaf size={12} strokeWidth={2.5} />,          activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
             { id: "Patrimônio Histórico",     label: "Patrimônio",  icon: <Landmark size={12} strokeWidth={2.5} />,      activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
+            { id: "População",              label: "População",    icon: <Users size={12} strokeWidth={2.5} />,         activeClass: "bg-white text-[#9c179e] border-[#f3e1f4]", ringClass: "focus-visible:ring-[#9c179e]/40" },
           ].map(({ id, label, icon, activeClass, ringClass }) => (
             <button key={id} onClick={() => toggleCamada(id)}
-              className={`h-8 px-3 rounded-md text-xs font-black active-press hover-lift flex items-center gap-1.5 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${ringClass} ${camadas.includes(id) ? activeClass : "text-white/80 border-white/20 hover:bg-white/10"}`}
+              className={`h-7 px-2 rounded-md text-[10px] font-black active-press hover-lift flex items-center gap-1 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${ringClass} ${camadas.includes(id) ? activeClass : "text-white/80 border-white/20 hover:bg-white/10"}`}
               style={camadas.includes(id) ? {} : { backgroundColor: C.field }}>
               {icon}{label}
             </button>
@@ -1147,9 +1179,9 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
           {/* Infraestrutura dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger disabled={!possuiInfra}
-              className={`h-8 px-3 flex items-center justify-between gap-2 rounded-md text-xs font-black active-press hover-lift whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${camadas.includes("Infraestrutura") && infraAtivas.length > 0 ? "bg-white text-[#1E404A] border-[#dce1d8]" : "text-white/80 border-white/20 hover:bg-white/10"}`}
+              className={`h-7 px-2 flex items-center justify-between gap-1.5 rounded-md text-[10px] font-black active-press hover-lift whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${camadas.includes("Infraestrutura") && infraAtivas.length > 0 ? "bg-white text-[#1E404A] border-[#dce1d8]" : "text-white/80 border-white/20 hover:bg-white/10"}`}
               style={camadas.includes("Infraestrutura") && infraAtivas.length > 0 ? {} : { backgroundColor: C.field }}>
-              <span className="flex items-center gap-1.5"><Wrench size={12} strokeWidth={2.5} />Infraestrutura {infraAtivas.length > 0 && `(${infraAtivas.length})`}</span>
+              <span className="flex items-center gap-1"><Wrench size={12} strokeWidth={2.5} />Infraestrutura {infraAtivas.length > 0 && `(${infraAtivas.length})`}</span>
               <span className="text-[8px] opacity-70">▼</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end">
@@ -1238,6 +1270,22 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
               </DropdownMenu>
             </div>
           )}
+          {camadas.includes("População") && (
+            <div className="flex flex-col gap-0.5 w-full shrink-0">
+              <label className="text-[8px] font-bold uppercase tracking-wider" style={{ color: "#9c179e" }}>Heatmap de População</label>
+              <button
+                onClick={() => setShowPopulacao(p => !p)}
+                className="h-6 w-full rounded text-[10px] font-bold border transition-colors duration-150"
+                style={{
+                  backgroundColor: showPopulacao ? "#9c179e20" : "transparent",
+                  borderColor: showPopulacao ? "#9c179e" : C.border,
+                  color: showPopulacao ? "#9c179e" : C.muted,
+                }}
+              >
+                {showPopulacao ? "Visível" : "Oculta"}
+              </button>
+            </div>
+          )}
           {isCenarioAtivo && (
             <div className="flex flex-col gap-0.5 w-full shrink-0">
               <label className="text-[8px] font-bold uppercase tracking-wider" style={{ color: COLORS.cenario }}>Mancha de Inundação</label>
@@ -1295,6 +1343,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 { value: "empresas",    label: "Empresas",    icon: <Building2     size={11} strokeWidth={2.5} /> },
                 { value: "saude",       label: "Saúde",       icon: <HeartPulse    size={11} strokeWidth={2.5} /> },
                 { value: "educacao",    label: "Educação",    icon: <GraduationCap size={11} strokeWidth={2.5} /> },
+                ...( camadas.includes("Patrimônio Histórico") ? [{ value: "patrimonio", label: "Patrimônio", icon: <Landmark size={11} strokeWidth={2.5} /> }] : []),
                 ...( camadas.includes("Infraestrutura") && infraAtivas.length > 0 ? [{ value: "infra",       label: "Infraestrutura", icon: <Wrench  size={11} strokeWidth={2.5} /> }] : []),
                 ...( camadas.includes("Agricultura")              ? [{ value: "agricultura", label: "Agricultura", icon: <Sprout  size={11} strokeWidth={2.5} /> }] : []),
                 ...( camadas.includes("Uso e Cobertura da Terra") ? [{ value: "cobertura",   label: "Cobertura",   icon: <Leaf    size={11} strokeWidth={2.5} /> }] : []),
@@ -1311,6 +1360,59 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 </button>
               ))}
             </div>
+
+            {/* KPI fixo de população — largura total, abaixo das abas */}
+            {camadas.includes("População") && popData?.["Rio Grande"] && (() => {
+              const cenSlug = cenario.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              const popCen = cenario !== "(nenhum)" ? popData["Rio Grande"].cenarios?.[cenSlug] : null;
+              return (
+              <div className="shrink-0 mb-4 rounded-lg border overflow-hidden mt-2"
+                style={{ borderColor: "#e9d5ff", background: "linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%)" }}>
+                <div className="flex items-center gap-2 px-3 py-2">
+                  <Users size={13} strokeWidth={2.5} className="text-purple-600 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-end gap-1">
+                      <div className="min-w-0">
+                        <div className="text-[9px] font-bold text-purple-500 uppercase tracking-wider leading-none mb-0.5">Pop. Total</div>
+                        <div className="flex items-baseline gap-0.5">
+                          <span className="text-[13px] font-black text-purple-800 tabular-nums">
+                            {popData["Rio Grande"].pop_total.toLocaleString("pt-BR")}
+                          </span>
+                          <span className="text-[9px] text-purple-400">hab.</span>
+                        </div>
+                      </div>
+                      {popCen && (
+                        <div className="text-right shrink-0 min-w-0">
+                          <div className="text-[9px] font-bold text-red-500 uppercase tracking-wider leading-none mb-0.5">
+                            Atingida
+                          </div>
+                          <div className="flex items-baseline gap-0.5 justify-end">
+                            <span className="text-[13px] font-black text-red-700 tabular-nums">
+                              {popCen.pop_atingida.toLocaleString("pt-BR")}
+                            </span>
+                            <span className="text-[9px] text-red-400">
+                              ({popCen.pct_atingida.toFixed(1)}%)
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {popCen && (
+                      <div className="mt-1.5 h-1.5 bg-purple-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${Math.min(popCen.pct_atingida, 100)}%`,
+                            background: "linear-gradient(to right, #9333ea, #dc2626)",
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              );
+            })()}
 
             {/* Empresas */}
             <TabsContent value="empresas" className="flex-1 overflow-y-auto mt-4 pr-2 pb-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full">
@@ -1697,6 +1799,65 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
               })()}
               <p className="text-[9px] italic mt-3 pt-2 border-t" style={{ color: C.muted, borderColor: C.border }}>Fonte: CNES — Cadastro Nacional de Estabelecimentos de Saúde</p>
             </TabsContent>
+
+            {/* Patrimônio Histórico */}
+            {camadas.includes("Patrimônio Histórico") && (
+              <TabsContent value="patrimonio" className="flex-1 overflow-y-auto mt-4 pr-2 pb-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full">
+                <KPIRow isLoading={isLoading} titulo="Patrimônios" cor={COLORS.patrimonio}
+                  valor={compactoBr(isCenarioAtivo ? metricasPatrimonio.impacto.total : metricasPatrimonio.base.total, 0)}
+                  sub={isCenarioAtivo ? "Atingidos" : "Total"}
+                  delta={isCenarioAtivo ? `de ${compactoBr(metricasPatrimonio.base.total, 0)} (${calcPct(metricasPatrimonio.impacto.total, metricasPatrimonio.base.total)})` : undefined} />
+
+                {(() => {
+                  const tipos = isCenarioAtivo ? metricasPatrimonio.impacto.tipos : metricasPatrimonio.base.tipos;
+                  const pieData = Object.entries(tipos).filter(([, v]) => (v as number) > 0).sort((a, b) => (b[1] as number) - (a[1] as number)).map(([name, value]) => ({ name, value: value as number }));
+                  const totalT = pieData.reduce((s, d) => s + d.value, 0);
+                  if (pieData.length === 0) return null;
+                  return (
+                    <>
+                      <h3 className="text-[11px] font-black uppercase tracking-wider mt-4 mb-1 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Por Tipologia</h3>
+                      <div className="relative flex items-center justify-center">
+                        <ResponsiveContainer width="100%" height={170}>
+                          <PieChart>
+                            <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={76} paddingAngle={2} dataKey="value" stroke="none" cursor="pointer"
+                              onClick={(d: any) => setFiltroTipologia(filtroTipologia === d.name ? "(todas)" : d.name)}>
+                              {pieData.map((d, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} opacity={filtroTipologia !== "(todas)" && filtroTipologia !== d.name ? 0.35 : 1} />)}
+                            </Pie>
+                            <Tooltip formatter={(v: any) => [`${v} item${v !== 1 ? "s" : ""}`, ""]} contentStyle={{ fontSize: 11, borderRadius: 8, border: `1px solid ${C.border}`, padding: "4px 10px" }} itemStyle={{ color: C.primary }} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute flex flex-col items-center pointer-events-none">
+                          <span className="text-2xl font-black leading-none" style={{ color: C.primary }}>{totalT}</span>
+                          {isCenarioAtivo
+                            ? <><span className="text-[9px] font-medium" style={{ color: C.muted }}>{Math.round(totalT / metricasPatrimonio.base.total * 100)}% do total</span><span className="text-[9px]" style={{ color: C.muted }}>de {metricasPatrimonio.base.total}</span></>
+                            : <span className="text-[10px] font-medium" style={{ color: C.muted }}>itens</span>}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-0.5 mb-3">
+                        {pieData.map((d, i) => (
+                          <div key={d.name}
+                            className="flex items-center gap-2 rounded-md px-1 py-0.5 cursor-pointer transition-colors"
+                            style={{ backgroundColor: filtroTipologia === d.name ? `${DONUT_COLORS[i % DONUT_COLORS.length]}22` : "transparent", outline: filtroTipologia === d.name ? `1px solid ${DONUT_COLORS[i % DONUT_COLORS.length]}55` : "none" }}
+                            onClick={() => setFiltroTipologia(filtroTipologia === d.name ? "(todas)" : d.name)}
+                            title={filtroTipologia === d.name ? "Clique para remover filtro" : `Filtrar por ${d.name}`}
+                          >
+                            <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+                            <span className="text-[11px] flex-1 truncate" style={{ color: filtroTipologia === d.name ? C.primary : C.muted }} title={d.name}>{d.name}</span>
+                            <span className="text-[11px] font-bold tabular-nums" style={{ color: C.primary }}>{d.value}</span>
+                            <span className="text-[11px] w-9 text-right tabular-nums" style={{ color: C.muted }}>{Math.round(d.value / totalT * 100)}%</span>
+                          </div>
+                        ))}
+                        {filtroTipologia !== "(todas)" && <button className="text-[9px] font-bold mt-1.5 px-2.5 py-1 rounded-md self-start" style={{ backgroundColor: `${C.primary}15`, color: C.primary, border: `1px solid ${C.primary}35` }} onClick={() => setFiltroTipologia("(todas)")}>✕ Limpar filtro</button>}
+                      </div>
+                    </>
+                  );
+                })()}
+
+
+
+                <p className="text-[9px] italic mt-3 pt-2 border-t" style={{ color: C.muted, borderColor: C.border }}>Fonte: Levantamento de Patrimônio Histórico — Rio Grande/RS</p>
+              </TabsContent>
+            )}
 
             {/* Agricultura */}
             {camadas.includes("Agricultura") && (
