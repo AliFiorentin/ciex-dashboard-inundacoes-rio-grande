@@ -1160,7 +1160,6 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             { id: "Agricultura",              label: "Agricultura", icon: <Sprout size={12} strokeWidth={2.5} />,        activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
             { id: "Uso e Cobertura da Terra", label: "Cobertura",   icon: <Leaf size={12} strokeWidth={2.5} />,          activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
             { id: "Patrimônio Histórico",     label: "Patrimônio",  icon: <Landmark size={12} strokeWidth={2.5} />,      activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
-            { id: "População",              label: "População",    icon: <Users size={12} strokeWidth={2.5} />,         activeClass: "bg-white text-[#9c179e] border-[#f3e1f4]", ringClass: "focus-visible:ring-[#9c179e]/40" },
           ].map(({ id, label, icon, activeClass, ringClass }) => (
             <button key={id} onClick={() => toggleCamada(id)}
               className={`h-7 px-2 rounded-md text-[10px] font-black active-press hover-lift flex items-center gap-1 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${ringClass} ${camadas.includes(id) ? activeClass : "text-white/80 border-white/20 hover:bg-white/10"}`}
