@@ -257,6 +257,10 @@ const countRuasUnicas = (feats: any[]): number => {
 export default function Dashboard() {
   const mapRef = useRef<MapRef>(null);
   const permalinkCenarioRef = useRef<string | null>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  // Deslocamento vertical dos painéis flutuantes; acompanha a altura do header
+  // (que cresce quando os botões de camada quebram linha em telas menores).
+  const [panelTop, setPanelTop] = useState(90);
 
   const [cenario, setCenario] = useState<string>("(nenhum)");
 
@@ -301,6 +305,9 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
   const [baseReady, setBaseReady] = useState(false);
   // true = carga inicial ainda em andamento; cenário effect deve ser ignorado até o mount terminar
   const initialLoadDoneRef = useRef(false);
+  // Evita que o effect de cenário refaça o fetch/animação logo após a carga inicial
+  // (a carga inicial já buscou os dados e ajustou o mapa para o cenário inicial).
+  const skipInitialScenarioRef = useRef(false);
 
   const [cursor,    setCursor]    = useState("grab");
   const [popupInfo, setPopupInfo] = useState<{ lngLat: [number, number]; properties: any; source: string } | null>(null);
@@ -356,6 +363,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       (infraResults as any[]).forEach(({ infra, d }) => { if (d) infraData[infra] = d; });
       setAtingidosInfra(infraData);
 
+      skipInitialScenarioRef.current = true;
       setCenario(initialCenario);
       initialLoadDoneRef.current = true;
       setBaseReady(true);
@@ -376,6 +384,12 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
   // Cenário → mancha + atingidos (pula todos os runs até o mount terminar)
   useEffect(() => {
     if (!initialLoadDoneRef.current) return;
+    // Pula a execução redundante disparada pelo setCenario da carga inicial
+    // (dados e enquadramento do cenário inicial já foram feitos no mount).
+    if (skipInitialScenarioRef.current) {
+      skipInitialScenarioRef.current = false;
+      return;
+    }
     if (!cenario || cenario === "(nenhum)") {
       const map = mapRef.current?.getMap();
       if (map) map.flyTo({ center: [-52.22, -32.09], zoom: 10.8, duration: 5000 });
@@ -509,6 +523,19 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
     const qs = params.toString();
     window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
   }, [cenario]);
+
+  // Mede a altura do header e reposiciona os painéis (para quando os botões
+  // de camada quebram linha em telas menores e o header fica mais alto).
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const update = () => setPanelTop(el.offsetTop + el.offsetHeight + 10);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener("resize", update);
+    return () => { ro.disconnect(); window.removeEventListener("resize", update); };
+  }, []);
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
@@ -1126,8 +1153,8 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
         </div>
       </div>
 
-      {/* ── Header — single row, original zip sizes, no flex-wrap → panels at top-[90px] */}
-      <header className="absolute top-2 left-4 right-4 px-4 py-3 flex gap-4 items-center shadow-2xl z-20 rounded-xl print:hidden" style={{ backgroundColor: C.primary, border: `1px solid ${C.dark}` }}>
+      {/* ── Header — quebra em várias linhas em telas menores; painéis seguem panelTop */}
+      <header ref={headerRef} className="absolute top-2 left-4 right-4 px-4 py-3 flex flex-wrap gap-x-4 gap-y-2 items-center shadow-2xl z-20 rounded-xl print:hidden" style={{ backgroundColor: C.primary, border: `1px solid ${C.dark}` }}>
 
         {/* Logos CIEX + GPEA */}
         <div className="flex items-center gap-3 shrink-0 border-r pr-4" style={{ borderColor: "rgba(255,255,255,0.2)" }}>
@@ -1152,7 +1179,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
         </div>
 
         {/* Camadas */}
-        <div className="flex gap-1 items-center">
+        <div className="flex flex-wrap gap-1 items-center">
           {[
             { id: "Empresas",                 label: "Empresas",    icon: <Building2 size={12} strokeWidth={2.5} />,     activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
             { id: "Saúde",                    label: "Saúde",       icon: <HeartPulse size={12} strokeWidth={2.5} />,    activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
@@ -1192,7 +1219,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
 
       {/* ── Filtros (direita) ─────────────────────────────────────────── */}
       {showFiltros && (temCamadaTabular || isCenarioAtivo) && (
-        <div className="print:hidden absolute top-[90px] right-4 flex flex-col gap-1.5 p-2.5 rounded-xl shadow-2xl z-10 w-36 max-h-[calc(100vh-110px)] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, ["--tw-scrollbar-thumb" as any]: C.border }}>
+        <div className="print:hidden absolute right-4 flex flex-col gap-1.5 p-2.5 rounded-xl shadow-2xl z-10 w-36 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full" style={{ top: panelTop, maxHeight: `calc(100vh - ${panelTop + 20}px)`, backgroundColor: "#fff", border: `1px solid ${C.border}`, ["--tw-scrollbar-thumb" as any]: C.border }}>
           <div className="flex justify-between items-center mb-0.5 border-b pb-1.5" style={{ borderColor: C.border }}>
             <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: C.primary }}>Filtros</span>
             <button onClick={() => setShowFiltros(false)} className="font-black text-xs px-1" style={{ color: C.muted }}>✖</button>
@@ -1282,8 +1309,8 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       )}
       {!showFiltros && (temCamadaTabular || isCenarioAtivo) && (
         <button onClick={() => setShowFiltros(true)}
-          className="absolute top-[90px] right-4 text-xs font-black shadow-2xl px-4 py-2 rounded-xl z-20 hover:bg-slate-50 active-press hover-lift flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 print:hidden"
-          style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.primary }}
+          className="absolute right-4 text-xs font-black shadow-2xl px-4 py-2 rounded-xl z-20 hover:bg-slate-50 active-press hover-lift flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 print:hidden"
+          style={{ top: panelTop, backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.primary }}
           onMouseEnter={e => (e.currentTarget.style.backgroundColor = C.cardBg)}
           onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#fff")}>
           <SlidersHorizontal size={12} strokeWidth={2.5} />Filtros
@@ -1292,7 +1319,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
 
       {/* ── Painel de Análise (esquerda flutuante) ─────────────────────── */}
       {showPainelAnalise && (
-        <div className="absolute top-[90px] left-4 bottom-4 w-[350px] flex flex-col backdrop-blur-md rounded-xl shadow-2xl p-4 overflow-hidden z-20 print:static print:w-full print:shadow-none print:max-h-none print:h-auto print:overflow-visible" style={{ backgroundColor: `${C.bg}f2`, border: `1px solid ${C.border}`, animation: "panelSlideIn 320ms var(--ease-drawer) both" }}>
+        <div className="absolute left-4 bottom-4 w-[350px] flex flex-col backdrop-blur-md rounded-xl shadow-2xl p-4 overflow-hidden z-20 print:static print:w-full print:shadow-none print:max-h-none print:h-auto print:overflow-visible" style={{ top: panelTop, backgroundColor: `${C.bg}f2`, border: `1px solid ${C.border}`, animation: "panelSlideIn 320ms var(--ease-drawer) both" }}>
           <div className="mb-3 shrink-0">
             <h2 className="text-base font-black tracking-tight flex items-center justify-between" style={{ color: C.primary }}>
               Painel
@@ -2191,8 +2218,8 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       {/* ── Botão abrir painel ────────────────────────────────────────── */}
       {!showPainelAnalise && (
         <button onClick={() => setShowPainelAnalise(true)}
-          className="absolute top-[90px] left-4 text-xs font-black shadow-2xl px-4 py-2 rounded-xl z-20 active-press hover-lift bg-white flex items-center gap-1.5 focus-visible:outline-none print:hidden"
-          style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.primary }}
+          className="absolute left-4 text-xs font-black shadow-2xl px-4 py-2 rounded-xl z-20 active-press hover-lift bg-white flex items-center gap-1.5 focus-visible:outline-none print:hidden"
+          style={{ top: panelTop, backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.primary }}
           onMouseEnter={e => (e.currentTarget.style.backgroundColor = C.cardBg)}
           onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#fff")}>
           <PanelLeft size={12} strokeWidth={2.5} />Abrir Painel
