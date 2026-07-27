@@ -18,8 +18,9 @@ A aplicação é um dashboard de página única construído com **Next.js + Type
 
 **Funcionalidades:**
 - Alternância entre cenários de inundação com carregamento assíncrono por demanda
-- Painel de análise com abas por setor (Empresas, Saúde, Educação, Infraestrutura, Agricultura, Cobertura da Terra)
-- Filtros por setor econômico (CNAE), dependência administrativa e tipo de estabelecimento
+- Painel de análise com abas por setor (Empresas, Saúde, Educação, Patrimônio Histórico, Infraestrutura, Agricultura, Cobertura da Terra)
+- Heatmap de população (WorldPop) exibido como camada de fundo permanente, com KPI de população total e atingida por cenário no topo do painel
+- Filtros por setor econômico (CNAE), dependência administrativa, tipo de estabelecimento e tipologia de patrimônio
 - Download dos dados filtrados em XLSX
 - Impressão do painel via CSS dedicado
 - Permalink via parâmetro `?c=<slug>` na URL
@@ -130,7 +131,7 @@ Diferente das demais camadas, a população **não** é um recorte vetorial: é 
 
 $$\%\,\text{pop. atingida} = \frac{\text{pop. atingida}}{\text{pop. total}} \times 100$$
 
-O KPI de população é lido diretamente desse JSON (não é recalculado no cliente). A imagem raster (`populacao.png`) é posicionada pelas quatro coordenadas de canto presentes no JSON.
+O KPI de população é lido diretamente desse JSON (não é recalculado no cliente). A imagem raster (`populacao.png`) é posicionada pelas quatro coordenadas de canto presentes no JSON. Diferente das camadas por setor, a População não tem botão de alternância no cabeçalho: é uma camada de fundo permanente, identificada apenas pela legenda (gradiente de densidade) e pelo KPI no painel.
 
 ### 3. Formatos de arquivo e desempenho
 
