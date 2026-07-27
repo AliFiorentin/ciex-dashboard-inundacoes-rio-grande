@@ -10,8 +10,8 @@ import * as flatgeobuf from "flatgeobuf";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 import {
-  Building2, GraduationCap, HeartPulse, Wrench, Leaf, Sprout, Landmark, Users,
-  Download, Printer, EyeOff, SlidersHorizontal, PanelLeft,
+  Building2, GraduationCap, HeartPulse, Wrench, Leaf, Sprout, Landmark, Users, Layers,
+  Download, Printer, EyeOff, SlidersHorizontal, PanelLeft, PanelRightClose,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -1178,8 +1178,8 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
           </Select>
         </div>
 
-        {/* Camadas */}
-        <div className="flex flex-wrap gap-1 items-center">
+        {/* Camadas — inline em telas largas (≥xl) */}
+        <div className="hidden xl:flex flex-wrap gap-1 items-center">
           {[
             { id: "Empresas",                 label: "Empresas",    icon: <Building2 size={12} strokeWidth={2.5} />,     activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
             { id: "Saúde",                    label: "Saúde",       icon: <HeartPulse size={12} strokeWidth={2.5} />,    activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
@@ -1215,6 +1215,38 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        {/* Camadas — colapsadas em um único menu em telas estreitas (<xl) */}
+        <div className="flex xl:hidden">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="h-8 px-3 flex items-center gap-1.5 rounded-md text-xs font-black active-press hover-lift whitespace-nowrap text-white/90 border-white/20 hover:bg-white/10 focus-visible:outline-none"
+              style={{ backgroundColor: C.field }}>
+              <Layers size={13} strokeWidth={2.5} />Camadas
+              <span className="text-[8px] opacity-70">▼</span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-52" align="start">
+              {[
+                { id: "Empresas",                 label: "Empresas" },
+                { id: "Saúde",                    label: "Saúde" },
+                { id: "Educação",                 label: "Educação" },
+                { id: "Agricultura",              label: "Agricultura" },
+                { id: "Uso e Cobertura da Terra", label: "Cobertura" },
+                { id: "Patrimônio Histórico",     label: "Patrimônio" },
+              ].map(({ id, label }) => (
+                <DropdownMenuCheckboxItem key={id} checked={camadas.includes(id)} onCheckedChange={() => toggleCamada(id)} className="text-xs hover:bg-slate-100">
+                  {label}
+                </DropdownMenuCheckboxItem>
+              ))}
+              <div className="text-[9px] font-bold px-2 pt-1.5 pb-1 mt-1 text-slate-400 uppercase tracking-wider border-t border-slate-200/60">Infraestrutura</div>
+              {INFRA_LAYERS.map(nome => (
+                <DropdownMenuCheckboxItem key={nome} checked={infraAtivas.includes(nome)} onCheckedChange={() => toggleInfra(nome)} className="text-xs hover:bg-slate-100">
+                  {nome}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </header>
 
       {/* ── Filtros (direita) ─────────────────────────────────────────── */}
@@ -1222,7 +1254,9 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
         <div className="print:hidden absolute right-4 flex flex-col gap-1.5 p-2.5 rounded-xl shadow-2xl z-10 w-36 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full" style={{ top: panelTop, maxHeight: `calc(100vh - ${panelTop + 20}px)`, backgroundColor: "#fff", border: `1px solid ${C.border}`, ["--tw-scrollbar-thumb" as any]: C.border }}>
           <div className="flex justify-between items-center mb-0.5 border-b pb-1.5" style={{ borderColor: C.border }}>
             <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: C.primary }}>Filtros</span>
-            <button onClick={() => setShowFiltros(false)} className="font-black text-xs px-1" style={{ color: C.muted }}>✖</button>
+            <button onClick={() => setShowFiltros(false)} title="Recolher filtros" aria-label="Recolher filtros" className="flex items-center justify-center rounded p-0.5 hover:bg-slate-100 transition-colors" style={{ color: C.muted }}>
+              <PanelRightClose size={14} strokeWidth={2.5} />
+            </button>
           </div>
 
           {camadas.includes("Empresas") && (
