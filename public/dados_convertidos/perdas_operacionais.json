@@ -1,0 +1,37 @@
+{
+  "Rio Grande": {
+    "Cenário Maio 2024": {
+      "dias_agudo": 30,
+      "dias_efetivos": 60,
+      "f_interrup": 0.164384,
+      "empresas_vab": 77178858.58,
+      "educacao_perdas": 9163523.34,
+      "educacao_custo_adicional": 9163523.34,
+      "saude_producao": 9131.69,
+      "agricultura_perdas": 140.0,
+      "total": 95515176.96
+    },
+    "Cenário Maio 2024 + 50%": {
+      "dias_agudo": 30,
+      "dias_efetivos": 60,
+      "f_interrup": 0.164384,
+      "empresas_vab": 460048560.8,
+      "educacao_perdas": 37017937.29,
+      "educacao_custo_adicional": 37017937.29,
+      "saude_producao": 9850834.15,
+      "agricultura_perdas": 63390.0,
+      "total": 543998659.52
+    },
+    "Cenário Setembro 2023": {
+      "dias_agudo": 15,
+      "dias_efetivos": 30,
+      "f_interrup": 0.082192,
+      "empresas_vab": 10001754.11,
+      "educacao_perdas": 1345331.94,
+      "educacao_custo_adicional": 1345331.94,
+      "saude_producao": 0.0,
+      "agricultura_perdas": 0.0,
+      "total": 12692417.99
+    }
+  }
+}

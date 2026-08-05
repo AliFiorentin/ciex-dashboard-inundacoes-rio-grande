@@ -11,7 +11,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 import {
   Building2, GraduationCap, HeartPulse, Wrench, Leaf, Sprout, Landmark, Users, Layers,
-  Download, Printer, EyeOff, SlidersHorizontal, PanelLeft, PanelRightClose,
+  Download, Printer, EyeOff, SlidersHorizontal, PanelLeft, PanelRightClose, TrendingDown,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -25,7 +25,7 @@ const COLORS = {
   empresas:    "#2563eb",
   educacao:    "#16a34a",
   saude:       "#dc2626",
-  cenario:     "#1f77b4",
+  cenario:     "#1d4ed8",
   infra:       "#f59e0b",
   agricultura: "#6B8E23",
   patrimonio:  "#a16207",
@@ -183,8 +183,8 @@ const calcEmp = (base: any) => {
   const estab = base.features.length;
   const emp   = base.features.reduce((a: number, f: any) => a + (f.properties?.Empregados    || 0), 0);
   const massa = base.features.reduce((a: number, f: any) => a + (f.properties?.Massa_Salarial || 0), 0);
-  // Mean of per-company MédiaSalarial (same methodology as Streamlit)
-  const mediaSum = base.features.reduce((a: number, f: any) => a + (f.properties?.["Média Salarial"] || 0), 0);
+  // Mean of per-company salario_medio (same methodology as Streamlit)
+  const mediaSum = base.features.reduce((a: number, f: any) => a + (f.properties?.salario_medio || 0), 0);
   const media = estab > 0 ? mediaSum / estab : 0;
   return { estab, emp, massa, media };
 };
@@ -256,6 +256,30 @@ const countRuasUnicas = (feats: any[]): number => {
 
 export default function Dashboard() {
   const mapRef = useRef<MapRef>(null);
+  // A câmera já nasce na posição correta (da URL, se houver, senão o enquadramento
+  // padrão abaixo) — inicia true para sempre pular a animação de fitBounds do
+  // carregamento inicial (nunca é lido/escrito durante o render).
+  const hasFlownInitialRef = useRef(true);
+
+  const [initialViewState] = useState(() => {
+    if (typeof window === "undefined") {
+      return { longitude: -52.10339, latitude: -32.03563, zoom: 13.29, pitch: 65, bearing: -12 };
+    }
+    const p = new URLSearchParams(window.location.search);
+    const z = p.get('z');
+    const lat = p.get('lat');
+    const lng = p.get('lng');
+    const pt = p.get('p');
+    const b = p.get('b');
+
+    return {
+      longitude: lng ? parseFloat(lng) : -52.10339,
+      latitude: lat ? parseFloat(lat) : -32.03563,
+      zoom: z ? parseFloat(z) : 13.29,
+      pitch: pt ? parseFloat(pt) : 65,
+      bearing: b ? parseFloat(b) : -12,
+    };
+  });
   const permalinkCenarioRef = useRef<string | null>(null);
   const headerRef = useRef<HTMLElement>(null);
   // Deslocamento vertical dos painéis flutuantes; acompanha a altura do header
@@ -264,9 +288,17 @@ export default function Dashboard() {
 
   const [cenario, setCenario] = useState<string>("(nenhum)");
 
-  const [camadas,     setCamadas]     = useState<string[]>(["Empresas", "Saúde", "Educação", "Agricultura", "Uso e Cobertura da Terra", "Infraestrutura", "Patrimônio Histórico", "População"]);
+  const [camadas,     setCamadas]     = useState<string[]>(["Empresas", "Saúde", "Educação", "Agricultura", "Uso e Cobertura da Terra", "Infraestrutura", "Patrimônio Histórico"]);
   const [infraAtivas, setInfraAtivas] = useState<string[]>(["Logradouros", "Quadras", "Terrenos"]);
   const [tabAtiva,    setTabAtiva]    = useState("empresas");
+  const [is3D, setIs3D] = useState(true);
+  const [mapReady, setMapReady] = useState(false);
+  const ultimoModo3D = useRef<boolean | null>(null);
+  const [showHeatmapPopulacao, setShowHeatmapPopulacao] = useState(false);
+  const [showHeatmapEmpresas,  setShowHeatmapEmpresas]  = useState(false);
+  const [showHeatmapSaude,     setShowHeatmapSaude]     = useState(false);
+  const [showHeatmapEducacao,  setShowHeatmapEducacao]  = useState(false);
+
 
   const [filtroSetor, setFiltroSetor] = useState("(todos)");
   const [filtroDep,   setFiltroDep]   = useState("(todas)");
@@ -372,14 +404,70 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       requestAnimationFrame(() => {
         const map = mapRef.current?.getMap();
         if (map && mancha) {
-          const bbox = turf.bbox(mancha) as [number, number, number, number];
-          map.fitBounds(bbox, { padding: 40, maxZoom: 11.8, offset: [40, 60], duration: 1500, essential: true });
+          if (!hasFlownInitialRef.current) {
+            hasFlownInitialRef.current = true;
+            const bbox = turf.bbox(mancha) as [number, number, number, number];
+            map.fitBounds(bbox, { padding: 40, maxZoom: 11.8, offset: [40, 60], duration: 1500, essential: true });
+          }
         }
       });
     }).catch(e => { if ((e as Error).name !== "AbortError") console.error(e); });
 
     return () => ctrl.abort();
   }, []);
+
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    // easeTo é uma operação de câmera pura — não depende do estilo estar
+    // carregado, então aplicamos direto (evita ficar esperando um evento
+    // "load" que só dispara uma vez e pode já ter passado).
+    if (ultimoModo3D.current !== is3D) {
+      ultimoModo3D.current = is3D;
+      map.easeTo({
+        pitch: is3D ? 65 : 0,
+        bearing: is3D ? -12 : 0,
+        duration: 800,
+      });
+    }
+  }, [is3D, mapReady, mapRef]);
+
+  const ajustarCamera = (deltaBearing: number, deltaPitch: number) => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    map.easeTo({
+      bearing: map.getBearing() + deltaBearing,
+      pitch: Math.min(85, Math.max(0, map.getPitch() + deltaPitch)),
+      duration: 300,
+    });
+  };
+
+  const CONTROLES_CAMERA = [
+    { rotulo: "↺", titulo: "Girar à esquerda", db: -15, dp: 0 },
+    { rotulo: "↻", titulo: "Girar à direita", db: 15, dp: 0 },
+    { rotulo: "▲", titulo: "Aumentar inclinação", db: 0, dp: 10 },
+    { rotulo: "▼", titulo: "Reduzir inclinação", db: 0, dp: -10 },
+  ];
+
+  const handleMapMoveEnd = () => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    const center = map.getCenter();
+    const zoom = map.getZoom();
+    const pitch = map.getPitch();
+    const bearing = map.getBearing();
+
+    const params = new URLSearchParams(window.location.search);
+    params.set('lng', center.lng.toFixed(5));
+    params.set('lat', center.lat.toFixed(5));
+    params.set('z', zoom.toFixed(2));
+    if (pitch > 0) params.set('p', pitch.toFixed(0));
+    else params.delete('p');
+    if (bearing !== 0) params.set('b', bearing.toFixed(1));
+    else params.delete('b');
+
+    window.history.replaceState(null, '', `?${params.toString()}`);
+  };
 
   // Cenário → mancha + atingidos (pula todos os runs até o mount terminar)
   useEffect(() => {
@@ -958,15 +1046,83 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
         `}} />
         <Map
           ref={mapRef}
-          initialViewState={{ longitude: -52.22, latitude: -32.13, zoom: 10.8 }}
-          mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+          initialViewState={initialViewState}
+          mapStyle="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
           interactiveLayerIds={interactiveLayerIds}
           onClick={handleMapClick}
           cursor={cursor}
           onMouseEnter={() => setCursor("pointer")}
           onMouseLeave={() => setCursor("grab")}
+          onLoad={() => setMapReady(true)}
+          maxPitch={85}
+          onMoveEnd={handleMapMoveEnd}
         >
-          <NavigationControl position="bottom-right" />
+          {/* Âncoras para manter Z-Index correto (primeira coisa a ser renderizada) */}
+          <Source id="anchors" type="geojson" data={EMPTY_GEO}>
+            <Layer id="anchor-mancha" type="circle" paint={{ "circle-radius": 0, "circle-opacity": 0 }} />
+            <Layer id="anchor-buildings" type="circle" paint={{ "circle-radius": 0, "circle-opacity": 0 }} />
+            <Layer id="anchor-pts" type="circle" paint={{ "circle-radius": 0, "circle-opacity": 0 }} />
+          </Source>
+
+          <NavigationControl position="bottom-right" visualizePitch />
+          
+          {/* Botão 3D/2D posicionado logo acima do NavigationControl */}
+          <div className="absolute z-10 print:hidden" style={{ bottom: "145px", right: "10px" }}>
+            <button
+              onClick={() => setIs3D(!is3D)}
+              className="flex h-[29px] w-[29px] items-center justify-center rounded-md font-black transition-colors shadow"
+              style={{
+                backgroundColor: is3D ? "#2563eb" : "#ffffff",
+                color: is3D ? "#ffffff" : "#333333",
+                border: "1px solid rgba(0,0,0,0.1)",
+                fontSize: "12px",
+              }}
+              title={is3D ? "Voltar para 2D" : "Visualizar em 3D"}
+            >
+              {is3D ? "2D" : "3D"}
+            </button>
+          </div>
+
+          {/* Controles de Câmera 3D posicionados ao lado esquerdo do NavigationControl */}
+          {is3D && (
+            <div className="absolute z-10 flex flex-row gap-1 print:hidden" style={{ bottom: "45px", right: "48px" }}>
+              {CONTROLES_CAMERA.map((c) => (
+                <button
+                  key={c.rotulo}
+                  onClick={() => ajustarCamera(c.db, c.dp)}
+                  title={c.titulo}
+                  className="flex h-[29px] w-[29px] items-center justify-center rounded-md font-black text-[#333333] transition-colors hover:bg-slate-100 shadow"
+                  style={{
+                    backgroundColor: "#ffffff",
+                    border: "1px solid rgba(0,0,0,0.1)",
+                    fontSize: "12px",
+                  }}
+                >
+                  {c.rotulo}
+                </button>
+              ))}
+            </div>
+          )}
+
+
+          {/* Edifícios 3D */}
+          {mapReady && (
+            <Source id="openfreemap-buildings" type="vector" url="https://tiles.openfreemap.org/planet">
+              <Layer
+                id="buildings-3d"
+                type="fill-extrusion"
+                source-layer="building"
+                beforeId="empresas-cluster"
+                layout={{ visibility: is3D ? "visible" : "none" }}
+                paint={{
+                  "fill-extrusion-color": "#e2e8f0",
+                  "fill-extrusion-height": ["get", "render_height"],
+                  "fill-extrusion-base": ["get", "render_min_height"],
+                  "fill-extrusion-opacity": 0.8
+                }}
+              />
+            </Source>
+          )}
 
           {popupInfo && (
             <Popup longitude={popupInfo.lngLat[0]} latitude={popupInfo.lngLat[1]} anchor="bottom" onClose={() => setPopupInfo(null)} closeButton closeOnClick={false} className="z-50 !p-0" maxWidth="250px">
@@ -975,15 +1131,15 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
           )}
 
           {/* Polygon/line layers rendered first (below point layers) */}
-          {baseReady && manchaCenario && showMancha && (
+          {mapReady && baseReady && manchaCenario && showMancha && (
             <Source id="cenario" type="geojson" data={manchaCenario}>
-              <Layer id="cenario-fill" type="fill"  paint={{ "fill-color": COLORS.cenario, "fill-opacity": 0.18 }} />
-              <Layer id="cenario-line" type="line"  paint={{ "line-color": COLORS.cenario, "line-width": 2, "line-opacity": 0.8 }} />
+              <Layer beforeId="anchor-mancha" id="cenario-fill" type="fill"  paint={{ "fill-color": COLORS.cenario, "fill-opacity": 0.25 }} />
+              <Layer beforeId="anchor-mancha" id="cenario-line" type="line"  paint={{ "line-color": COLORS.cenario, "line-width": 2, "line-opacity": 0.9 }} />
             </Source>
           )}
 
           {/* Raster de População */}
-          {camadas.includes("População") && popData?.["Rio Grande"] && (
+          {mapReady && showHeatmapPopulacao && popData?.["Rio Grande"] && (
             <Source
               id="populacao-img"
               type="image"
@@ -991,6 +1147,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
               coordinates={popData["Rio Grande"].coordinates as [[number,number],[number,number],[number,number],[number,number]]}
             >
               <Layer
+                beforeId="anchor-buildings"
                 id="populacao-raster"
                 type="raster"
                 paint={{ "raster-opacity": 0.65, "raster-resampling": "nearest" }}
@@ -998,9 +1155,127 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             </Source>
           )}
 
-          {camadas.includes("Uso e Cobertura da Terra") && showCobertura?.features && (
+          {/* Heatmap Empresas */}
+          {mapReady && showHeatmapEmpresas && renderEmp?.features && (
+            <Source id="heatmap-empresas" type="geojson" data={renderEmp}>
+              <Layer
+                id="heatmap-empresas-layer"
+                beforeId="anchor-buildings"
+                type="heatmap"
+                paint={{
+                  "heatmap-weight": [
+                    "interpolate", ["linear"], ["get", "massa_salarial"],
+                    0, 0, 100000, 0.2, 1000000, 1
+                  ],
+                  "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 10, 1, 15, 3],
+                  "heatmap-color": [
+                    "interpolate", ["linear"], ["heatmap-density"],
+                    0, "rgba(0, 0, 255, 0)", 0.2, "rgba(29, 78, 216, 0.5)", 0.4, "rgba(0, 255, 255, 0.7)",
+                    0.6, "rgba(0, 255, 0, 0.8)", 0.8, "rgba(255, 255, 0, 0.9)", 1, "rgba(255, 0, 0, 1)"
+                  ],
+                  "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 10, 15, 15, 40],
+                  "heatmap-opacity": 0.8
+                }}
+              />
+            </Source>
+          )}
+
+          {/* Heatmap Saúde */}
+          {mapReady && showHeatmapSaude && renderSau?.features && (
+            <Source id="heatmap-saude" type="geojson" data={renderSau}>
+              <Layer
+                id="heatmap-saude-layer"
+                beforeId="anchor-buildings"
+                type="heatmap"
+                paint={{
+                  "heatmap-weight": [
+                    "interpolate", ["linear"],
+                    ["+", ["coalesce", ["get", "staff_medicos"], 0], ["coalesce", ["get", "staff_enfermagem"], 0]],
+                    0, 0, 10, 0.2, 50, 1
+                  ],
+                  "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 10, 1, 15, 3],
+                  "heatmap-color": [
+                    "interpolate", ["linear"], ["heatmap-density"],
+                    0, "rgba(0, 0, 255, 0)", 0.2, "rgba(185, 28, 28, 0.5)", 0.4, "rgba(239, 68, 68, 0.7)",
+                    0.6, "rgba(248, 113, 113, 0.8)", 0.8, "rgba(255, 255, 0, 0.9)", 1, "rgba(255, 0, 0, 1)"
+                  ],
+                  "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 10, 15, 15, 40],
+                  "heatmap-opacity": 0.8
+                }}
+              />
+            </Source>
+          )}
+
+          {/* Heatmap Educação */}
+          {mapReady && showHeatmapEducacao && renderEdu?.features && (
+            <Source id="heatmap-educacao" type="geojson" data={renderEdu}>
+              <Layer
+                id="heatmap-educacao-layer"
+                beforeId="anchor-buildings"
+                type="heatmap"
+                paint={{
+                  "heatmap-weight": [
+                    "interpolate", ["linear"],
+                    ["+", ["coalesce", ["get", "qtd_matri_inf"], 0], ["coalesce", ["get", "qtd_matri_fund"], 0], ["coalesce", ["get", "qtd_matri_med"], 0]],
+                    0, 0, 100, 0.2, 500, 1
+                  ],
+                  "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 10, 1, 15, 3],
+                  "heatmap-color": [
+                    "interpolate", ["linear"], ["heatmap-density"],
+                    0, "rgba(0, 0, 255, 0)", 0.2, "rgba(21, 128, 61, 0.5)", 0.4, "rgba(34, 197, 94, 0.7)",
+                    0.6, "rgba(134, 239, 172, 0.8)", 0.8, "rgba(255, 255, 0, 0.9)", 1, "rgba(255, 0, 0, 1)"
+                  ],
+                  "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 10, 15, 15, 40],
+                  "heatmap-opacity": 0.8
+                }}
+              />
+            </Source>
+          )}
+
+          {/* Ordem z (do fundo para o topo): Mancha → Infraestrutura → Agricultura → Cobertura → Prédios 3D → Empresas/Educação/Saúde/Patrimônio */}
+
+          {/* Infra em ordem z: Segurança → Prédios → Logradouros → Terrenos → Quadras (último=fundo) */}
+          {mapReady && baseReady && camadas.includes("Infraestrutura") && ["Segurança", "Prédios Públicos", "Logradouros", "Terrenos", "Quadras"].map(nome => {
+            const total = baseInfra[nome];
+            if (!total || !infraAtivas.includes(nome)) return null;
+            const sid = `infra-${slugify(nome)}`;
+            const geo = cenario !== "(nenhum)" ? (atingidosInfra[nome] ?? { type: "FeatureCollection", features: [] }) : total;
+            const cor = INFRA_COLORS[nome] ?? COLORS.infra;
+            const corContorno = INFRA_COLORS[nome] ?? "#d97706";
+            return (
+              <Source key={sid} id={sid} type="geojson" data={geo}>
+                <Layer beforeId="anchor-buildings" id={`${sid}-fill`}  type="fill"   filter={["any",["==",["geometry-type"],"Polygon"],   ["==",["geometry-type"],"MultiPolygon"]]}    paint={{ "fill-color": cor, "fill-opacity": 0.25, "fill-outline-color": corContorno }} />
+                <Layer beforeId="anchor-buildings" id={`${sid}-line`}  type="line"   filter={["any",["==",["geometry-type"],"LineString"],["==",["geometry-type"],"MultiLineString"]]}  paint={{ "line-color": cor, "line-width": 2.5 }} />
+                <Layer beforeId="anchor-buildings" id={`${sid}-point`} type="circle" filter={["any",["==",["geometry-type"],"Point"],     ["==",["geometry-type"],"MultiPoint"]]}        paint={{ "circle-color": cor, "circle-radius": 4.5, "circle-stroke-width": 1.5, "circle-stroke-color": "#fff" }} />
+              </Source>
+            );
+          })}
+
+          {mapReady && camadas.includes("Agricultura") && showAgricultura?.features && (
+            <Source id="agricultura" type="geojson" data={showAgricultura}>
+              <Layer beforeId="anchor-buildings" id="agricultura-fill" type="fill" paint={{
+                "fill-color": ["match", ["get", "tipo_cultura"],
+                  "Soja",                        "#D4A017",
+                  "Arroz",                       "#4FC3F7",
+                  "Outras Lavouras Temporarias", "#AED581",
+                  "#888888"],
+                "fill-opacity": 0.72
+              }} />
+              <Layer beforeId="anchor-buildings" id="agricultura-line" type="line" paint={{
+                "line-color": ["match", ["get", "tipo_cultura"],
+                  "Soja",                        "#D4A017",
+                  "Arroz",                       "#4FC3F7",
+                  "Outras Lavouras Temporarias", "#AED581",
+                  "#888888"],
+                "line-width": 1,
+                "line-opacity": 0.45
+              }} />
+            </Source>
+          )}
+
+          {mapReady && camadas.includes("Uso e Cobertura da Terra") && showCobertura?.features && (
             <Source id="cobertura" type="geojson" data={showCobertura}>
-              <Layer id="cobertura-fill" type="fill" paint={{
+              <Layer beforeId="anchor-buildings" id="cobertura-fill" type="fill" paint={{
                 "fill-color": ["match", ["get", "tipo_classe"],
                   "Silvicultura",                   "#7a5900",
                   "Campo Alagado e Area Pantanosa", "#519799",
@@ -1011,7 +1286,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                   "#888888"],
                 "fill-opacity": 0.68
               }} />
-              <Layer id="cobertura-line" type="line" paint={{
+              <Layer beforeId="anchor-buildings" id="cobertura-line" type="line" paint={{
                 "line-color": ["match", ["get", "tipo_classe"],
                   "Silvicultura",                   "#7a5900",
                   "Campo Alagado e Area Pantanosa", "#519799",
@@ -1025,45 +1300,6 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
               }} />
             </Source>
           )}
-
-          {camadas.includes("Agricultura") && showAgricultura?.features && (
-            <Source id="agricultura" type="geojson" data={showAgricultura}>
-              <Layer id="agricultura-fill" type="fill" paint={{
-                "fill-color": ["match", ["get", "tipo_cultura"],
-                  "Soja",                        "#D4A017",
-                  "Arroz",                       "#4FC3F7",
-                  "Outras Lavouras Temporarias", "#AED581",
-                  "#888888"],
-                "fill-opacity": 0.72
-              }} />
-              <Layer id="agricultura-line" type="line" paint={{
-                "line-color": ["match", ["get", "tipo_cultura"],
-                  "Soja",                        "#D4A017",
-                  "Arroz",                       "#4FC3F7",
-                  "Outras Lavouras Temporarias", "#AED581",
-                  "#888888"],
-                "line-width": 1,
-                "line-opacity": 0.45
-              }} />
-            </Source>
-          )}
-
-          {/* Infra em ordem z: Segurança → Prédios → Logradouros → Terrenos → Quadras (último=fundo) */}
-          {baseReady && camadas.includes("Infraestrutura") && ["Segurança", "Prédios Públicos", "Logradouros", "Terrenos", "Quadras"].map(nome => {
-            const total = baseInfra[nome];
-            if (!total || !infraAtivas.includes(nome)) return null;
-            const sid = `infra-${slugify(nome)}`;
-            const geo = cenario !== "(nenhum)" ? (atingidosInfra[nome] ?? { type: "FeatureCollection", features: [] }) : total;
-            const cor = INFRA_COLORS[nome] ?? COLORS.infra;
-            const corContorno = INFRA_COLORS[nome] ?? "#d97706";
-            return (
-              <Source key={sid} id={sid} type="geojson" data={geo}>
-                <Layer id={`${sid}-fill`}  type="fill"   filter={["any",["==",["geometry-type"],"Polygon"],   ["==",["geometry-type"],"MultiPolygon"]]}    paint={{ "fill-color": cor, "fill-opacity": 0.25, "fill-outline-color": corContorno }} />
-                <Layer id={`${sid}-line`}  type="line"   filter={["any",["==",["geometry-type"],"LineString"],["==",["geometry-type"],"MultiLineString"]]}  paint={{ "line-color": cor, "line-width": 2.5 }} />
-                <Layer id={`${sid}-point`} type="circle" filter={["any",["==",["geometry-type"],"Point"],     ["==",["geometry-type"],"MultiPoint"]]}        paint={{ "circle-color": cor, "circle-radius": 4.5, "circle-stroke-width": 1.5, "circle-stroke-color": "#fff" }} />
-              </Source>
-            );
-          })}
 
           {/* Point layers rendered last (above polygon/line layers) */}
           <Source id="empresas" type="geojson" data={camadas.includes("Empresas") && renderEmp?.features ? renderEmp : EMPTY_GEO} cluster clusterMaxZoom={14} clusterRadius={40}>
@@ -1131,7 +1367,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 <LegendItem key={`cob-${tipo}`} cor={cor} label={tipo} area />
               ))
             )}
-            {camadas.includes("População") && popData?.["Rio Grande"] && (
+            {showHeatmapPopulacao && popData?.["Rio Grande"] && (
               <div className="flex items-center gap-2 mt-1">
                 <div className="w-16 h-3 rounded-sm shrink-0" style={{ background: "linear-gradient(to right, #0d0887, #9c179e, #ed7953, #f0f921)" }} />
                 <div className="flex flex-col leading-none gap-0.5">
@@ -1154,29 +1390,40 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       </div>
 
       {/* ── Header — quebra em várias linhas em telas menores; painéis seguem panelTop */}
-      <header ref={headerRef} className="absolute top-2 left-4 right-4 px-4 py-3 flex flex-wrap gap-x-4 gap-y-2 items-center shadow-2xl z-20 rounded-xl print:hidden" style={{ backgroundColor: C.primary, border: `1px solid ${C.dark}` }}>
+      <header ref={headerRef} className="absolute top-2 left-4 right-4 px-4 py-1.5 flex flex-wrap gap-x-4 gap-y-2 items-center shadow-2xl z-20 rounded-xl print:hidden" style={{ backgroundColor: C.primary, border: `1px solid ${C.dark}` }}>
 
         {/* Logos CIEX + GPEA */}
         <div className="flex items-center gap-3 shrink-0 border-r pr-4" style={{ borderColor: "rgba(255,255,255,0.2)" }}>
-          <Image src="/CIEX.png" alt="CIEX" width={80} height={36} className="object-contain" style={{ height: "2.25rem", width: "auto" }} onError={e => (e.currentTarget.style.display = "none")} />
-          <Image src="/GPEA.png" alt="GPEA" width={80} height={32} className="object-contain" style={{ height: "2rem", width: "auto" }} onError={e => (e.currentTarget.style.display = "none")} />
+          <Image src="/CIEX.png" alt="CIEX" width={80} height={28} className="object-contain" style={{ height: "1.75rem", width: "auto" }} onError={e => (e.currentTarget.style.display = "none")} />
+          <Image src="/GPEA.png" alt="GPEA" width={80} height={24} className="object-contain" style={{ height: "1.5rem", width: "auto" }} onError={e => (e.currentTarget.style.display = "none")} />
           <div className="pl-3 flex flex-col justify-center">
-            <h1 className="text-base font-black leading-tight text-white whitespace-nowrap">Painel de Vulnerabilidade Econômica</h1>
-            <span className="text-[11px] font-medium tracking-wider uppercase text-white/70">Rio Grande, RS</span>
+            <h1 className="text-[14px] font-black leading-tight text-white whitespace-nowrap">Painel de Vulnerabilidade Econômica</h1>
+            <span className="text-[9px] font-medium tracking-wider uppercase text-white/70">Rio Grande, RS</span>
           </div>
         </div>
 
         {/* Cenário */}
-        <div className="flex flex-col gap-0.5 shrink-0 border-r pr-4" style={{ borderColor: "rgba(255,255,255,0.2)" }}>
-          <label className="text-[9px] font-bold uppercase tracking-wider text-white/70">Cenário de Inundação</label>
+        <div className="flex flex-col gap-0 shrink-0 border-r pr-4" style={{ borderColor: "rgba(255,255,255,0.2)" }}>
+          <label className="text-[8px] font-bold uppercase tracking-wider text-white/70">Cenário de Inundação</label>
           <Select value={cenario} onValueChange={setCenario}>
-            <SelectTrigger className="h-8 text-xs text-white border-white/20 w-44" style={{ backgroundColor: C.field }}><SelectValue placeholder="(nenhum)" /></SelectTrigger>
+            <SelectTrigger className="h-7 text-[10px] text-white border-white/20 w-44" style={{ backgroundColor: C.field }}><SelectValue placeholder="(nenhum)" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="(nenhum)">(Ver Total)</SelectItem>
               {CENARIOS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
+
+        <a
+          href="/perdas"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="h-7 px-2.5 flex items-center gap-1.5 rounded-md text-[10px] font-black active-press hover-lift whitespace-nowrap text-white/90 border border-white/20 hover:bg-white/10 focus-visible:outline-none shrink-0"
+          style={{ backgroundColor: C.field }}
+          title="Ver perdas operacionais estimadas"
+        >
+          <TrendingDown size={12} strokeWidth={2.5} />Perdas Operacionais
+        </a>
 
         {/* Camadas — inline em telas largas (≥xl) */}
         <div className="hidden xl:flex flex-wrap gap-1 items-center">
@@ -1339,6 +1586,69 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
               </button>
             </div>
           )}
+
+          {/* Heatmaps Toggles */}
+          <div className="flex flex-col gap-1 w-full shrink-0 mt-2 border-t pt-2" style={{ borderColor: C.border }}>
+            <div className="flex flex-col gap-0.5 w-full">
+              <label className="text-[8px] font-bold text-purple-700 uppercase tracking-wider">Heatmap População</label>
+              <button
+                onClick={() => setShowHeatmapPopulacao(p => !p)}
+                className="h-6 w-full rounded text-[10px] font-bold border transition-colors flex items-center justify-center"
+                style={{
+                  backgroundColor: showHeatmapPopulacao ? "#7e22ce20" : "transparent",
+                  borderColor: showHeatmapPopulacao ? "#7e22ce" : "#cbd5e1",
+                  color: showHeatmapPopulacao ? "#7e22ce" : "#64748b"
+                }}
+              >
+                {showHeatmapPopulacao ? "Visível" : "Oculto"}
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-0.5 w-full">
+              <label className="text-[8px] font-bold text-blue-700 uppercase tracking-wider">Heatmap Empresas</label>
+              <button
+                onClick={() => setShowHeatmapEmpresas(p => !p)}
+                className="h-6 w-full rounded text-[10px] font-bold border transition-colors flex items-center justify-center"
+                style={{
+                  backgroundColor: showHeatmapEmpresas ? "#1d4ed820" : "transparent",
+                  borderColor: showHeatmapEmpresas ? "#1d4ed8" : "#cbd5e1",
+                  color: showHeatmapEmpresas ? "#1d4ed8" : "#64748b"
+                }}
+              >
+                {showHeatmapEmpresas ? "Visível" : "Oculto"}
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-0.5 w-full">
+              <label className="text-[8px] font-bold text-red-700 uppercase tracking-wider">Heatmap Saúde</label>
+              <button
+                onClick={() => setShowHeatmapSaude(p => !p)}
+                className="h-6 w-full rounded text-[10px] font-bold border transition-colors flex items-center justify-center"
+                style={{
+                  backgroundColor: showHeatmapSaude ? "#b91c1c20" : "transparent",
+                  borderColor: showHeatmapSaude ? "#b91c1c" : "#cbd5e1",
+                  color: showHeatmapSaude ? "#b91c1c" : "#64748b"
+                }}
+              >
+                {showHeatmapSaude ? "Visível" : "Oculto"}
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-0.5 w-full">
+              <label className="text-[8px] font-bold text-green-700 uppercase tracking-wider">Heatmap Educação</label>
+              <button
+                onClick={() => setShowHeatmapEducacao(p => !p)}
+                className="h-6 w-full rounded text-[10px] font-bold border transition-colors flex items-center justify-center"
+                style={{
+                  backgroundColor: showHeatmapEducacao ? "#15803d20" : "transparent",
+                  borderColor: showHeatmapEducacao ? "#15803d" : "#cbd5e1",
+                  color: showHeatmapEducacao ? "#15803d" : "#64748b"
+                }}
+              >
+                {showHeatmapEducacao ? "Visível" : "Oculto"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {!showFiltros && (temCamadaTabular || isCenarioAtivo) && (
@@ -1398,8 +1708,8 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
               ))}
             </div>
 
-            {/* KPI fixo de população — largura total, abaixo das abas */}
-            {camadas.includes("População") && popData?.["Rio Grande"] && (() => {
+            {/* KPI fixo de população — largura total, abaixo das abas (sempre visível quando há dados, independe de camadas/heatmap) */}
+            {popData?.["Rio Grande"] && (() => {
               const cenSlug = cenario.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
               const popCen = cenario !== "(nenhum)" ? popData["Rio Grande"].cenarios?.[cenSlug] : null;
               return (
