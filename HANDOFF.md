@@ -6,20 +6,33 @@ Registro do que foi implementado na sessão de 05/08/2026 e do que ficou pendent
 
 ---
 
-## ⚠️ Antes de formatar — o que NÃO está no Git
+## Formatação da máquina — o que sobrevive e o que refazer
 
-O `.gitignore` ignora o diretório `/scripts/` inteiro (linha 36). Tudo abaixo existe **apenas no disco local** e será perdido na formatação se não for copiado para outro lugar:
+O projeto vive em `D:\Projetos\CIEX\`, num **disco externo que não será formatado**. Logo o repositório, o `node_modules`, o diretório `scripts/` e o projeto irmão `D:\Projetos\BID` continuam intactos. Nada precisa ser copiado antes.
 
-| Arquivo | Origem | Reconstruível? |
-|---|---|---|
-| `scripts/calcular_perdas_rio_grande.py` | Criado nesta sessão | Sim, mas exige reescrever ~250 linhas |
-| `scripts/data/producao_sus_por_cnes_rio_grande.json` | Derivado do parquet do projeto BID | Só com o projeto BID em mãos |
-| `scripts/converter_*.py` (6 arquivos) | Pré-existentes ao projeto | Não trivialmente |
-| `scripts/data/*.tif`, `*.geojson` | Rasters MapBiomas e limite municipal | Sim, mas exige baixar de novo |
+O que se perde é o que está no disco do sistema e precisará ser reinstalado/reconfigurado:
 
-**Recomendação:** copiar `scripts/` inteiro (~6 MB) para backup externo antes de formatar.
+| Item | Ação após formatar |
+|---|---|
+| Node.js + npm | Reinstalar. `node_modules` já está em D:, mas se der erro de binário nativo, rodar `npm install` de novo |
+| Python 3.12 | Reinstalar apenas se for regerar o lookup do SUS. `pip install pandas pyarrow` |
+| Credenciais do GitHub | Refazer autenticação no primeiro `git push` (fluxo pelo navegador) |
+| Configuração do Claude Code | Reinstalar; o histórico de memória do projeto ficava em `C:\Users\...\.claude\` |
 
-O mesmo vale para o projeto irmão em `D:\Projetos\BID`, que foi a fonte dos dados desta atualização. Ele depende de caminhos externos absolutos que não estão versionados — `D:/RAIS/...`, planilhas em `C:\Users\...\Downloads\`, shapefiles das manchas em `data/raw/manchas/`. Sem esses insumos, o pipeline do BID não roda do zero.
+### Ainda assim: `scripts/` e `docs/` não estão no Git
+
+Independente da formatação, vale saber que o `.gitignore` ignora `/docs/` (linha 35) e `/scripts/` (linha 36) inteiros. Quem clonar o repositório em outra máquina **não** recebe:
+
+| Arquivo | Origem |
+|---|---|
+| `scripts/calcular_perdas_rio_grande.py` | Criado nesta sessão — sem ele não dá para recalcular as perdas |
+| `scripts/data/producao_sus_por_cnes_rio_grande.json` | Derivado do parquet do projeto BID |
+| `scripts/converter_*.py` (6 arquivos) | Pré-existentes ao projeto |
+| `scripts/data/*.tif`, `*.geojson` | Rasters MapBiomas e limite municipal |
+
+Isso é a convenção do projeto, não um descuido — mas ver o item 6 em "O que falta", que sugere abrir exceção para os dois primeiros.
+
+O projeto irmão `D:\Projetos\BID`, fonte dos dados desta atualização, depende de caminhos absolutos externos que também não são versionados: `D:/RAIS/...`, planilhas em `C:\Users\...\Downloads\` (essas **sim** morrem na formatação) e shapefiles das manchas em `data/raw/manchas/`. Se o pipeline do BID precisar rodar do zero depois, esses insumos de `Downloads` terão de ser rebaixados.
 
 ---
 
