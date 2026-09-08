@@ -24,11 +24,10 @@ export type PerdasData = Record<string, Record<string, CenarioPerdas>>;
 // ─── Constantes visuais (paleta CIEX) ─────────────────────────────────────────
 const PRIMARY = "#1E404A";
 const CEN_COLORS: Record<string, string> = {
-  "Cenário Maio 2024":          "#2563eb",
-  "Cenário Maio 2024 + 50%":    "#dc2626",
-  "Cenário Setembro 2023":      "#16a34a",
-  "Nível da Lagoa – 16/05/2024": "#7c3aed",
-  "Chuva Acumulada – 60,8mm":    "#ba82e6",
+  "Cenário Maio 2024":                              "#2563eb",
+  "Cenário Maio 2024 + 50%":                        "#dc2626",
+  "Cenário Setembro 2023":                          "#16a34a",
+  "Nível da Lagoa + Chuva Acumulada – 16/05/2024":  "#7c3aed",
 };
 const CEN_FALLBACK = "#3d7a94";
 const COMP_COLORS = {
@@ -589,15 +588,11 @@ function CompositionBar({ v }: { v: CenarioPerdas }) {
   );
 }
 
-// Quebra o rótulo em até 2 linhas, evitando colisão entre colunas quando o
-// nome do cenário é longo (ex.: "Nível da Lagoa – 16/05/2024"). Prioriza
-// quebrar no travessão " – " (nome do evento vs. data/valor); sem travessão,
-// cai para quebra por palavra.
-function wrapLabel(text: string, maxLen: number): string[] {
-  if (text.includes(" – ")) {
-    const idx = text.indexOf(" – ");
-    return [text.slice(0, idx), text.slice(idx + 3)];
-  }
+// Quebra o rótulo por palavra (sem limite de linhas — nomes de cenário longos,
+// ex. "Nível da Lagoa + Chuva Acumulada – 16/05/2024", precisam de 3+ linhas
+// para não colidir com a coluna vizinha nem cortar a data/valor no final).
+// Quebra também no travessão " – ", isolando a data/valor na última linha.
+function wordWrap(text: string, maxLen: number): string[] {
   const words = text.split(" ");
   const lines: string[] = [];
   let cur = "";
@@ -611,7 +606,13 @@ function wrapLabel(text: string, maxLen: number): string[] {
     }
   }
   if (cur) lines.push(cur);
-  return lines.slice(0, 2);
+  return lines;
+}
+
+function wrapLabel(text: string, maxLen: number): string[] {
+  const idx = text.indexOf(" – ");
+  if (idx === -1) return wordWrap(text, maxLen);
+  return [...wordWrap(text.slice(0, idx), maxLen), text.slice(idx + 3)];
 }
 
 function TotaisBarChart({
@@ -621,11 +622,11 @@ function TotaisBarChart({
   entradas: [string, CenarioPerdas][];
   maxTotal: number;
 }) {
-  const barW = 64;
-  const gap = 28;
+  const barW = 76;
+  const gap = 32;
   const chartH = 140;
   const pL = 60;
-  const pB = 52;
+  const pB = 64;
   const W = pL + entradas.length * (barW + gap) - gap + 10;
 
   return (
@@ -654,7 +655,7 @@ function TotaisBarChart({
               {v.total >= 1e9 ? `${(v.total / 1e9).toFixed(1)}bi` : `${(v.total / 1e6).toFixed(0)}mi`}
             </text>
             <text x={x + barW / 2} y={chartH + 18} textAnchor="middle" fontSize="8.5" fill="#374151" fontWeight="bold">
-              {wrapLabel(cen.replace("Cenário ", ""), 13).map((line, li) => (
+              {wrapLabel(cen.replace("Cenário ", ""), 17).map((line, li) => (
                 <tspan key={li} x={x + barW / 2} dy={li === 0 ? 0 : 10}>{line}</tspan>
               ))}
             </text>
@@ -683,7 +684,7 @@ function SensibChart({
   const gW = DIAS_OPCOES.length * bW + (DIAS_OPCOES.length - 1) * bGap;
   const chartH = 120;
   const pL = 55;
-  const pB = 48;
+  const pB = 58;
   const W = pL + cenarios.length * (gW + gGap) - gGap + 10;
 
   return (
@@ -729,7 +730,7 @@ function SensibChart({
                 );
               })}
               <text x={gx + gW / 2} y={chartH + 16} textAnchor="middle" fontSize="7.5" fill="#374151" fontWeight="bold">
-                {wrapLabel(cen.replace("Cenário ", ""), 13).map((line, li) => (
+                {wrapLabel(cen.replace("Cenário ", ""), 17).map((line, li) => (
                   <tspan key={li} x={gx + gW / 2} dy={li === 0 ? 0 : 9}>{line}</tspan>
                 ))}
               </text>

@@ -112,6 +112,11 @@
       "Cenario Maio 2024 + 50%": {
         "pop_atingida": 80124,
         "pct_atingida": 40.4
+      },
+      "Nivel da Lagoa + Chuva Acumulada – 16/05/2024": {
+        "pop_atingida": 13561,
+        "pct_atingida": 6.8,
+        "_metodologia": "estimado a partir do canal alfa de populacao.png (proxy de densidade) -- ver scripts/estimar_populacao_atingida.py"
       }
     }
   }
