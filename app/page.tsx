@@ -82,7 +82,46 @@ const C = {
 const CENARIOS = [
   "Cenário Maio 2024",
   "Cenário Maio 2024 + 50%",
+  "Nível da Lagoa – 16/05/2024",
+  "Chuva Acumulada – 60,8mm",
 ];
+
+// Manchas estilizadas por raster (altura da lâmina d'água), em vez do
+// preenchimento de cor única usado pelos demais cenários. Bounds e paleta
+// derivados do estilo QGIS (.qml) original — ver scripts/converter_manchas_altura.py
+// e README.md ("Manchas de altura da lâmina d'água") para a metodologia completa.
+const ALTURA_MANCHAS: Record<string, {
+  coords: [[number, number], [number, number], [number, number], [number, number]];
+  legenda: { label: string; cor: string }[];
+}> = {
+  "Nível da Lagoa – 16/05/2024": {
+    coords: [
+      [-52.204013, -32.023926],   // NW
+      [-52.071023, -32.023926],   // NE
+      [-52.071023, -32.105200],   // SE
+      [-52.204013, -32.105200],   // SW
+    ],
+    legenda: [
+      { label: "45–64 cm",  cor: "#4b0082" },
+      { label: "65–84 cm",  cor: "#00ffff" },
+      { label: "85–104 cm", cor: "#00ff00" },
+      { label: "105–124 cm", cor: "#ffff00" },
+      { label: "125–144 cm", cor: "#ff7f00" },
+      { label: "≥145 cm",    cor: "#ff0000" },
+    ],
+  },
+  "Chuva Acumulada – 60,8mm": {
+    coords: [
+      [-52.202862, -32.025415],   // NW
+      [-52.071059, -32.025415],   // NE
+      [-52.071059, -32.087840],   // SE
+      [-52.202862, -32.087840],   // SW
+    ],
+    legenda: [
+      { label: "Lâmina ≥10cm", cor: "#ba82e6" },
+    ],
+  },
+};
 
 const INFRA_LAYERS = [
   "Logradouros", "Quadras", "Terrenos",
@@ -263,21 +302,19 @@ export default function Dashboard() {
 
   const [initialViewState] = useState(() => {
     if (typeof window === "undefined") {
-      return { longitude: -52.10339, latitude: -32.03563, zoom: 13.29, pitch: 65, bearing: -12 };
+      return { longitude: -52.10339, latitude: -32.03563, zoom: 13.29, pitch: 0, bearing: 0 };
     }
     const p = new URLSearchParams(window.location.search);
     const z = p.get('z');
     const lat = p.get('lat');
     const lng = p.get('lng');
-    const pt = p.get('p');
-    const b = p.get('b');
 
     return {
       longitude: lng ? parseFloat(lng) : -52.10339,
       latitude: lat ? parseFloat(lat) : -32.03563,
       zoom: z ? parseFloat(z) : 13.29,
-      pitch: pt ? parseFloat(pt) : 65,
-      bearing: b ? parseFloat(b) : -12,
+      pitch: 0,
+      bearing: 0,
     };
   });
   const permalinkCenarioRef = useRef<string | null>(null);
@@ -291,9 +328,7 @@ export default function Dashboard() {
   const [camadas,     setCamadas]     = useState<string[]>(["Empresas", "Saúde", "Educação", "Agricultura", "Uso e Cobertura da Terra", "Infraestrutura", "Patrimônio Histórico"]);
   const [infraAtivas, setInfraAtivas] = useState<string[]>(["Logradouros", "Quadras", "Terrenos"]);
   const [tabAtiva,    setTabAtiva]    = useState("empresas");
-  const [is3D, setIs3D] = useState(true);
   const [mapReady, setMapReady] = useState(false);
-  const ultimoModo3D = useRef<boolean | null>(null);
   const [showHeatmapPopulacao, setShowHeatmapPopulacao] = useState(false);
   const [showHeatmapEmpresas,  setShowHeatmapEmpresas]  = useState(false);
   const [showHeatmapSaude,     setShowHeatmapSaude]     = useState(false);
@@ -416,55 +451,18 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
     return () => ctrl.abort();
   }, []);
 
-  useEffect(() => {
-    const map = mapRef.current?.getMap();
-    if (!map) return;
-    // easeTo é uma operação de câmera pura — não depende do estilo estar
-    // carregado, então aplicamos direto (evita ficar esperando um evento
-    // "load" que só dispara uma vez e pode já ter passado).
-    if (ultimoModo3D.current !== is3D) {
-      ultimoModo3D.current = is3D;
-      map.easeTo({
-        pitch: is3D ? 65 : 0,
-        bearing: is3D ? -12 : 0,
-        duration: 800,
-      });
-    }
-  }, [is3D, mapReady, mapRef]);
-
-  const ajustarCamera = (deltaBearing: number, deltaPitch: number) => {
-    const map = mapRef.current?.getMap();
-    if (!map) return;
-    map.easeTo({
-      bearing: map.getBearing() + deltaBearing,
-      pitch: Math.min(85, Math.max(0, map.getPitch() + deltaPitch)),
-      duration: 300,
-    });
-  };
-
-  const CONTROLES_CAMERA = [
-    { rotulo: "↺", titulo: "Girar à esquerda", db: -15, dp: 0 },
-    { rotulo: "↻", titulo: "Girar à direita", db: 15, dp: 0 },
-    { rotulo: "▲", titulo: "Aumentar inclinação", db: 0, dp: 10 },
-    { rotulo: "▼", titulo: "Reduzir inclinação", db: 0, dp: -10 },
-  ];
-
   const handleMapMoveEnd = () => {
     const map = mapRef.current?.getMap();
     if (!map) return;
     const center = map.getCenter();
     const zoom = map.getZoom();
-    const pitch = map.getPitch();
-    const bearing = map.getBearing();
 
     const params = new URLSearchParams(window.location.search);
     params.set('lng', center.lng.toFixed(5));
     params.set('lat', center.lat.toFixed(5));
     params.set('z', zoom.toFixed(2));
-    if (pitch > 0) params.set('p', pitch.toFixed(0));
-    else params.delete('p');
-    if (bearing !== 0) params.set('b', bearing.toFixed(1));
-    else params.delete('b');
+    params.delete('p');
+    params.delete('b');
 
     window.history.replaceState(null, '', `?${params.toString()}`);
   };
@@ -1054,7 +1052,10 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
           onMouseEnter={() => setCursor("pointer")}
           onMouseLeave={() => setCursor("grab")}
           onLoad={() => setMapReady(true)}
-          maxPitch={85}
+          maxPitch={0}
+          dragRotate={false}
+          pitchWithRotate={false}
+          touchPitch={false}
           onMoveEnd={handleMapMoveEnd}
         >
           {/* Âncoras para manter Z-Index correto (primeira coisa a ser renderizada) */}
@@ -1064,65 +1065,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             <Layer id="anchor-pts" type="circle" paint={{ "circle-radius": 0, "circle-opacity": 0 }} />
           </Source>
 
-          <NavigationControl position="bottom-right" visualizePitch />
-          
-          {/* Botão 3D/2D posicionado logo acima do NavigationControl */}
-          <div className="absolute z-10 print:hidden" style={{ bottom: "145px", right: "10px" }}>
-            <button
-              onClick={() => setIs3D(!is3D)}
-              className="flex h-[29px] w-[29px] items-center justify-center rounded-md font-black transition-colors shadow"
-              style={{
-                backgroundColor: is3D ? "#2563eb" : "#ffffff",
-                color: is3D ? "#ffffff" : "#333333",
-                border: "1px solid rgba(0,0,0,0.1)",
-                fontSize: "12px",
-              }}
-              title={is3D ? "Voltar para 2D" : "Visualizar em 3D"}
-            >
-              {is3D ? "2D" : "3D"}
-            </button>
-          </div>
-
-          {/* Controles de Câmera 3D posicionados ao lado esquerdo do NavigationControl */}
-          {is3D && (
-            <div className="absolute z-10 flex flex-row gap-1 print:hidden" style={{ bottom: "45px", right: "48px" }}>
-              {CONTROLES_CAMERA.map((c) => (
-                <button
-                  key={c.rotulo}
-                  onClick={() => ajustarCamera(c.db, c.dp)}
-                  title={c.titulo}
-                  className="flex h-[29px] w-[29px] items-center justify-center rounded-md font-black text-[#333333] transition-colors hover:bg-slate-100 shadow"
-                  style={{
-                    backgroundColor: "#ffffff",
-                    border: "1px solid rgba(0,0,0,0.1)",
-                    fontSize: "12px",
-                  }}
-                >
-                  {c.rotulo}
-                </button>
-              ))}
-            </div>
-          )}
-
-
-          {/* Edifícios 3D */}
-          {mapReady && (
-            <Source id="openfreemap-buildings" type="vector" url="https://tiles.openfreemap.org/planet">
-              <Layer
-                id="buildings-3d"
-                type="fill-extrusion"
-                source-layer="building"
-                beforeId="empresas-cluster"
-                layout={{ visibility: is3D ? "visible" : "none" }}
-                paint={{
-                  "fill-extrusion-color": "#e2e8f0",
-                  "fill-extrusion-height": ["get", "render_height"],
-                  "fill-extrusion-base": ["get", "render_min_height"],
-                  "fill-extrusion-opacity": 0.8
-                }}
-              />
-            </Source>
-          )}
+          <NavigationControl position="bottom-right" />
 
           {popupInfo && (
             <Popup longitude={popupInfo.lngLat[0]} latitude={popupInfo.lngLat[1]} anchor="bottom" onClose={() => setPopupInfo(null)} closeButton closeOnClick={false} className="z-50 !p-0" maxWidth="250px">
@@ -1133,8 +1076,20 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
           {/* Polygon/line layers rendered first (below point layers) */}
           {mapReady && baseReady && manchaCenario && showMancha && (
             <Source id="cenario" type="geojson" data={manchaCenario}>
-              <Layer beforeId="anchor-mancha" id="cenario-fill" type="fill"  paint={{ "fill-color": COLORS.cenario, "fill-opacity": 0.25 }} />
-              <Layer beforeId="anchor-mancha" id="cenario-line" type="line"  paint={{ "line-color": COLORS.cenario, "line-width": 2, "line-opacity": 0.9 }} />
+              {!ALTURA_MANCHAS[cenario] && <Layer beforeId="anchor-mancha" id="cenario-fill" type="fill" paint={{ "fill-color": COLORS.cenario, "fill-opacity": 0.25 }} />}
+              {!ALTURA_MANCHAS[cenario] && <Layer beforeId="anchor-mancha" id="cenario-line" type="line"  paint={{ "line-color": COLORS.cenario, "line-width": 2, "line-opacity": 0.9 }} />}
+            </Source>
+          )}
+
+          {/* Raster de altura da lâmina d'água (Nível da Lagoa / Chuva Acumulada) */}
+          {mapReady && baseReady && manchaCenario && showMancha && ALTURA_MANCHAS[cenario] && (
+            <Source
+              id="mancha-altura-img"
+              type="image"
+              url={`/dados_convertidos/rio_grande/cenarios/altura_raster_${scenarioSlug(cenario)}.png`}
+              coordinates={ALTURA_MANCHAS[cenario].coords}
+            >
+              <Layer beforeId="anchor-mancha" id="mancha-altura-raster" type="raster" paint={{ "raster-opacity": 0.85, "raster-resampling": "nearest" }} />
             </Source>
           )}
 
@@ -1376,7 +1331,13 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 </div>
               </div>
             )}
-            {manchaCenario && showMancha && <LegendItem cor={COLORS.cenario} label={cenario} area />}
+            {manchaCenario && showMancha && (
+              ALTURA_MANCHAS[cenario]
+                ? ALTURA_MANCHAS[cenario].legenda.map(({ label, cor }) => (
+                    <LegendItem key={`altura-${label}`} cor={cor} label={label} />
+                  ))
+                : <LegendItem cor={COLORS.cenario} label={cenario} area />
+            )}
           </div>
         )}
       </div>
@@ -1389,8 +1350,8 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
         </div>
       </div>
 
-      {/* ── Header — quebra em várias linhas em telas menores; painéis seguem panelTop */}
-      <header ref={headerRef} className="absolute top-2 left-4 right-4 px-4 py-1.5 flex flex-wrap gap-x-4 gap-y-2 items-center shadow-2xl z-20 rounded-xl print:hidden" style={{ backgroundColor: C.primary, border: `1px solid ${C.dark}` }}>
+      {/* ── Header — sempre em 1 linha (scroll horizontal se faltar espaço); painéis seguem panelTop */}
+      <header ref={headerRef} className="absolute top-2 left-4 right-4 px-4 py-1.5 flex flex-nowrap gap-x-4 items-center shadow-2xl z-20 rounded-xl print:hidden overflow-x-auto [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full" style={{ backgroundColor: C.primary, border: `1px solid ${C.dark}` }}>
 
         {/* Logos CIEX + GPEA */}
         <div className="flex items-center gap-3 shrink-0 border-r pr-4" style={{ borderColor: "rgba(255,255,255,0.2)" }}>
@@ -1425,8 +1386,8 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
           <TrendingDown size={12} strokeWidth={2.5} />Perdas Operacionais
         </a>
 
-        {/* Camadas — inline em telas largas (≥xl) */}
-        <div className="hidden xl:flex flex-wrap gap-1 items-center">
+        {/* Camadas — inline em telas largas (≥xl); a linha inteira do header rola horizontalmente se faltar espaço */}
+        <div className="hidden xl:flex flex-nowrap gap-1 items-center shrink-0">
           {[
             { id: "Empresas",                 label: "Empresas",    icon: <Building2 size={12} strokeWidth={2.5} />,     activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
             { id: "Saúde",                    label: "Saúde",       icon: <HeartPulse size={12} strokeWidth={2.5} />,    activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
@@ -1436,7 +1397,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             { id: "Patrimônio Histórico",     label: "Patrimônio",  icon: <Landmark size={12} strokeWidth={2.5} />,      activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
           ].map(({ id, label, icon, activeClass, ringClass }) => (
             <button key={id} onClick={() => toggleCamada(id)}
-              className={`h-7 px-2 rounded-md text-[10px] font-black active-press hover-lift flex items-center gap-1 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${ringClass} ${camadas.includes(id) ? activeClass : "text-white/80 border-white/20 hover:bg-white/10"}`}
+              className={`h-6 2xl:h-7 px-1.5 2xl:px-2 rounded-md text-[9px] 2xl:text-[10px] font-black active-press hover-lift flex items-center gap-1 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${ringClass} ${camadas.includes(id) ? activeClass : "text-white/80 border-white/20 hover:bg-white/10"}`}
               style={camadas.includes(id) ? {} : { backgroundColor: C.field }}>
               {icon}{label}
             </button>
@@ -1445,7 +1406,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
           {/* Infraestrutura dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger disabled={!possuiInfra}
-              className={`h-7 px-2 flex items-center justify-between gap-1.5 rounded-md text-[10px] font-black active-press hover-lift whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${camadas.includes("Infraestrutura") && infraAtivas.length > 0 ? "bg-white text-[#1E404A] border-[#dce1d8]" : "text-white/80 border-white/20 hover:bg-white/10"}`}
+              className={`h-6 2xl:h-7 px-1.5 2xl:px-2 flex items-center justify-between gap-1.5 rounded-md text-[9px] 2xl:text-[10px] font-black active-press hover-lift whitespace-nowrap shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${camadas.includes("Infraestrutura") && infraAtivas.length > 0 ? "bg-white text-[#1E404A] border-[#dce1d8]" : "text-white/80 border-white/20 hover:bg-white/10"}`}
               style={camadas.includes("Infraestrutura") && infraAtivas.length > 0 ? {} : { backgroundColor: C.field }}>
               <span className="flex items-center gap-1"><Wrench size={12} strokeWidth={2.5} />Infraestrutura {infraAtivas.length > 0 && `(${infraAtivas.length})`}</span>
               <span className="text-[8px] opacity-70">▼</span>

@@ -44,6 +44,7 @@ A aplicação é um dashboard de página única construído com **Next.js + Type
 | **Agricultura** | MapaBiomas Coleção 10 (2024) | Culturas: Soja, Arroz, Outras Lavouras Temporárias |
 | **População** | WorldPop | Grade populacional (hab./pixel) renderizada como heatmap raster; população total e atingida por cenário pré-computadas |
 | **Cenários de inundação** | Modelagem hidrológica | Manchas de inundação vetoriais do evento de Maio de 2024 e cenário expandido (+50%) |
+| **Manchas de altura da lâmina d'água** | Simulação hidrológica por bacias — plataforma Economia Azul (GPEA/FURG) | Nível da Lagoa (16/05/2024, 20h) e Chuva Acumulada (60,8mm): rasters de profundidade por bacia hidrográfica, estilizados por rampa de cor QGIS (`.qml`) |
 
 ---
 
@@ -132,6 +133,32 @@ Diferente das demais camadas, a população **não** é um recorte vetorial: é 
 $$\%\,\text{pop. atingida} = \frac{\text{pop. atingida}}{\text{pop. total}} \times 100$$
 
 O KPI de população é lido diretamente desse JSON (não é recalculado no cliente). A imagem raster (`populacao.png`) é posicionada pelas quatro coordenadas de canto presentes no JSON. Diferente das camadas por setor, a População não tem botão de alternância no cabeçalho: é uma camada de fundo permanente, identificada apenas pela legenda (gradiente de densidade) e pelo KPI no painel.
+
+#### Manchas de altura da lâmina d'água (Nível da Lagoa / Chuva Acumulada)
+
+Duas manchas adicionais, entregues como rasters de profundidade por bacia hidrográfica pela plataforma Economia Azul (GPEA/FURG), com estilo de visualização definido em QGIS (`.qml`). Processadas por `scripts/converter_manchas_altura.py` (não altera os conversores dos demais cenários) e tratadas como cenários comuns no restante do pipeline — mesma junção espacial `intersects`/`overlay` da seção 1, mesmos indicadores por setor da seção 2.
+
+**Nível da Lagoa – 16/05/2024, 20h.** Simulação de elevação do nível da lagoa. Fonte: mosaico dos rasters de profundidade das bacias 1–5 e 7 (`profundidade_Valor_21_cm_pontosNaMao.tif`, EPSG:31982, ~1 m/pixel). Cada pixel é a profundidade da lâmina d'água em cm. Rampa de cor (extraída do `.qml`, `classificationMode="DISCRETE"`):
+
+| Faixa (cm) | Cor |
+|---|---|
+| < 45 | transparente |
+| 45 – 64 | `#4b0082` (índigo) |
+| 65 – 84 | `#00ffff` (ciano) |
+| 85 – 104 | `#00ff00` (verde) |
+| 105 – 124 | `#ffff00` (amarelo) |
+| 125 – 144 | `#ff7f00` (laranja) |
+| ≥ 145 | `#ff0000` (vermelho) |
+
+A "área atingida" usada na junção espacial com as demais camadas é o limiar **≥ 45 cm** (primeira classe visível do `.qml`) — pixels vetorizados com `rasterio.features.shapes`, dissolvidos e suavizados (buffer de abertura/fechamento + simplificação, tolerância sub-métrica para preservar ruas estreitas alagadas).
+
+**Chuva Acumulada – 60,8 mm.** Simulação de acúmulo de água de chuva sobre a área urbana central, para uma precipitação de 60,8 mm. Fonte: mosaico dos rasters das bacias 1–5 (`bacia{N}_valor19.tif`, EPSG:31982). O pixel armazena um valor de saída do modelo ("valor19"), não diretamente em cm. O `.qml` (renderizador `paletted`) classifica de forma quase binária: valor < 86 → transparente; **valor 86–253 → lilás `#e3bdff` (visível)**; valor ≥ 254 → transparente novamente (interpretado como água pré-existente — lagoa/canais — e não como alagamento novo pela chuva). Segundo a fonte, o corte inferior (86) corresponde a uma lâmina d'água de aproximadamente **10 cm**.
+
+A "área atingida" replica essa classificação **literalmente**: apenas pixels com valor entre 86 e 253 (inclusive/exclusive) entram na mancha vetorizada e no cruzamento espacial com as demais camadas — valores ≥254 ficam de fora tanto da visualização quanto do cálculo de impacto.
+
+**Perdas operacionais.** As duas manchas foram incluídas em `CENARIOS`/`CENARIO_PERIODO` de `calcular_perdas_rio_grande.py`, usando os mesmos parâmetros DaLA (dias agudo/recuperação) e coeficientes agrícolas do período "maio_2024", por serem simulações do mesmo evento (16/05/2024).
+
+**Renderização.** Diferente dos demais cenários (preenchimento de cor única + contorno), estas duas manchas são exibidas como imagem raster colorida (`Source type="image"`) sobreposta ao contorno vetorial, preservando o gradiente/classificação original — ver `ALTURA_MANCHAS` em [app/page.tsx](app/page.tsx).
 
 ### 3. Formatos de arquivo e desempenho
 

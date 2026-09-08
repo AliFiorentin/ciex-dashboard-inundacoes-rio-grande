@@ -24,9 +24,11 @@ export type PerdasData = Record<string, Record<string, CenarioPerdas>>;
 // ─── Constantes visuais (paleta CIEX) ─────────────────────────────────────────
 const PRIMARY = "#1E404A";
 const CEN_COLORS: Record<string, string> = {
-  "Cenário Maio 2024":       "#2563eb",
-  "Cenário Maio 2024 + 50%": "#dc2626",
-  "Cenário Setembro 2023":   "#16a34a",
+  "Cenário Maio 2024":          "#2563eb",
+  "Cenário Maio 2024 + 50%":    "#dc2626",
+  "Cenário Setembro 2023":      "#16a34a",
+  "Nível da Lagoa – 16/05/2024": "#7c3aed",
+  "Chuva Acumulada – 60,8mm":    "#ba82e6",
 };
 const CEN_FALLBACK = "#3d7a94";
 const COMP_COLORS = {
@@ -203,7 +205,7 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
 
           {/* Gráfico de barras total por cenário */}
           <SubTitle>Total de Perdas por Cenário — {dias} dias ef.</SubTitle>
-          <p>Comparação dos três cenários avaliados para Rio Grande (em R$ milhões).</p>
+          <p>Comparação dos {entradas.length} cenários avaliados para Rio Grande (em R$ milhões).</p>
           <div className="bg-white border border-[#c7d6d9] rounded-xl p-5 shadow-sm mt-3">
             <TotaisBarChart entradas={entradas} maxTotal={maxTotal} />
             <div className="flex gap-4 flex-wrap mt-4 justify-center">
@@ -587,6 +589,31 @@ function CompositionBar({ v }: { v: CenarioPerdas }) {
   );
 }
 
+// Quebra o rótulo em até 2 linhas, evitando colisão entre colunas quando o
+// nome do cenário é longo (ex.: "Nível da Lagoa – 16/05/2024"). Prioriza
+// quebrar no travessão " – " (nome do evento vs. data/valor); sem travessão,
+// cai para quebra por palavra.
+function wrapLabel(text: string, maxLen: number): string[] {
+  if (text.includes(" – ")) {
+    const idx = text.indexOf(" – ");
+    return [text.slice(0, idx), text.slice(idx + 3)];
+  }
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let cur = "";
+  for (const w of words) {
+    const next = cur ? `${cur} ${w}` : w;
+    if (next.length > maxLen && cur) {
+      lines.push(cur);
+      cur = w;
+    } else {
+      cur = next;
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines.slice(0, 2);
+}
+
 function TotaisBarChart({
   entradas,
   maxTotal,
@@ -627,7 +654,9 @@ function TotaisBarChart({
               {v.total >= 1e9 ? `${(v.total / 1e9).toFixed(1)}bi` : `${(v.total / 1e6).toFixed(0)}mi`}
             </text>
             <text x={x + barW / 2} y={chartH + 18} textAnchor="middle" fontSize="8.5" fill="#374151" fontWeight="bold">
-              {cen.replace("Cenário ", "")}
+              {wrapLabel(cen.replace("Cenário ", ""), 13).map((line, li) => (
+                <tspan key={li} x={x + barW / 2} dy={li === 0 ? 0 : 10}>{line}</tspan>
+              ))}
             </text>
           </g>
         );
@@ -700,7 +729,9 @@ function SensibChart({
                 );
               })}
               <text x={gx + gW / 2} y={chartH + 16} textAnchor="middle" fontSize="7.5" fill="#374151" fontWeight="bold">
-                {cen.replace("Cenário ", "")}
+                {wrapLabel(cen.replace("Cenário ", ""), 13).map((line, li) => (
+                  <tspan key={li} x={gx + gW / 2} dy={li === 0 ? 0 : 9}>{line}</tspan>
+                ))}
               </text>
             </g>
           );

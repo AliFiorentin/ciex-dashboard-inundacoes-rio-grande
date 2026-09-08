@@ -1,0 +1,12 @@
+{
+"type": "FeatureCollection",
+"name": "infra_seguranca_ATINGIDOS_rio_grande___chuva_acumulada_60_8mm",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "Nome": "Delegacia Regional de Polícia Civil de Rio Grande - 7ªDPRI", "Endereço": "Av. Silva Paes, 249 - 7° andar", "Latitude": -32.0337227, "Longitude": -52.0935505 }, "geometry": { "type": "Point", "coordinates": [ -52.0935505, -32.0337227 ] } },
+{ "type": "Feature", "properties": { "Nome": "Polícia Civil - DRACO Rio Grande ", "Endereço": "Av. Silva Paes, 249 - 6⁰ andar", "Latitude": -32.0337155, "Longitude": -52.0935497 }, "geometry": { "type": "Point", "coordinates": [ -52.0935497, -32.0337155 ] } },
+{ "type": "Feature", "properties": { "Nome": "1ª Delegacia de Polícia Civil de Rio Grande - 1ªDP", "Endereço": "Av. Silva Paes, 249 - 4 andar - Centro", "Latitude": -32.0336734, "Longitude": -52.0935443 }, "geometry": { "type": "Point", "coordinates": [ -52.0935443, -32.0336734 ] } },
+{ "type": "Feature", "properties": { "Nome": "1ª Companhia de Policiamento Ostensivo", "Endereço": "R. Sen. Corrêa, 559 - Centro", "Latitude": -32.0395755, "Longitude": -52.1018798 }, "geometry": { "type": "Point", "coordinates": [ -52.1018798, -32.0395755 ] } },
+{ "type": "Feature", "properties": { "Nome": "Corpo de Bombeiros Militar Zona Sul", "Endereço": "R. Gen. Vitorino - Centro, Rio Grande", "Latitude": -32.0350727, "Longitude": -52.1057121 }, "geometry": { "type": "Point", "coordinates": [ -52.1057121, -32.0350727 ] } }
+]
+}

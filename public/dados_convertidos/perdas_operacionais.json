@@ -32,6 +32,28 @@
       "saude_producao": 0.0,
       "agricultura_perdas": 0.0,
       "total": 12692417.99
+    },
+    "Nível da Lagoa – 16/05/2024": {
+      "dias_agudo": 30,
+      "dias_efetivos": 60,
+      "f_interrup": 0.164384,
+      "empresas_vab": 53438197.32,
+      "educacao_perdas": 8985417.93,
+      "educacao_custo_adicional": 8985417.93,
+      "saude_producao": 9131.69,
+      "agricultura_perdas": 36.3,
+      "total": 71418201.18
+    },
+    "Chuva Acumulada – 60,8mm": {
+      "dias_agudo": 30,
+      "dias_efetivos": 60,
+      "f_interrup": 0.164384,
+      "empresas_vab": 356849522.01,
+      "educacao_perdas": 19918545.75,
+      "educacao_custo_adicional": 19918545.75,
+      "saude_producao": 2722089.48,
+      "agricultura_perdas": 0,
+      "total": 399408702.98
     }
   }
 }
