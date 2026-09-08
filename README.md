@@ -23,7 +23,7 @@ A aplicação é um dashboard de página única construído com **Next.js + Type
 - Filtros por setor econômico (CNAE), dependência administrativa, tipo de estabelecimento e tipologia de patrimônio
 - Download dos dados filtrados em XLSX
 - Impressão do painel via CSS dedicado
-- Permalink via parâmetro `?c=<slug>` na URL
+- Permalink via parâmetro `?cenario=<código>` na URL (mais `lat`/`lng`/`zoom` para a posição do mapa)
 
 ---
 
@@ -44,7 +44,7 @@ A aplicação é um dashboard de página única construído com **Next.js + Type
 | **Agricultura** | MapaBiomas Coleção 10 (2024) | Culturas: Soja, Arroz, Outras Lavouras Temporárias |
 | **População** | WorldPop | Grade populacional (hab./pixel) renderizada como heatmap raster; população total e atingida por cenário pré-computadas |
 | **Cenários de inundação** | Modelagem hidrológica | Manchas de inundação vetoriais do evento de Maio de 2024 e cenário expandido (+50%) |
-| **Manchas de altura da lâmina d'água** | Simulação hidrológica por bacias — plataforma Economia Azul (GPEA/FURG) | Nível da Lagoa (16/05/2024, 20h) e Chuva Acumulada (60,8mm): rasters de profundidade por bacia hidrográfica, estilizados por rampa de cor QGIS (`.qml`) |
+| **Mancha de altura da lâmina d'água** | Simulação hidrológica por bacias — plataforma Economia Azul (GPEA/FURG) | Nível da Lagoa (16/05/2024, 20h) + Chuva Acumulada (60,8mm) combinados: rasters de profundidade por bacia hidrográfica, estilizados por rampa de cor QGIS (`.qml`) |
 
 ---
 
@@ -134,9 +134,15 @@ $$\%\,\text{pop. atingida} = \frac{\text{pop. atingida}}{\text{pop. total}} \tim
 
 O KPI de população é lido diretamente desse JSON (não é recalculado no cliente). A imagem raster (`populacao.png`) é posicionada pelas quatro coordenadas de canto presentes no JSON. Diferente das camadas por setor, a População não tem botão de alternância no cabeçalho: é uma camada de fundo permanente, identificada apenas pela legenda (gradiente de densidade) e pelo KPI no painel.
 
-#### Manchas de altura da lâmina d'água (Nível da Lagoa / Chuva Acumulada)
+**Nota sobre o cenário combinado (Nível da Lagoa + Chuva Acumulada).** O GeoTIFF WorldPop original e o script que gerou os valores de `pop_atingida` dos demais cenários não estão neste repositório (dado externo do projeto BID/GPEA). Para esse cenário, `pop_atingida` foi **estimado** a partir do próprio `populacao.png` já renderizado: o canal alfa da imagem correlaciona quase perfeitamente (r ≈ 0,998, testado empiricamente) com a posição de cada pixel na rampa de cor do heatmap — uma proxy contínua e monotônica da densidade populacional subjacente. O alfa é usado como peso por pixel, calibrado proporcionalmente contra `pop_total` (valor real, conhecido):
 
-Duas manchas adicionais, entregues como rasters de profundidade por bacia hidrográfica pela plataforma Economia Azul (GPEA/FURG), com estilo de visualização definido em QGIS (`.qml`). Processadas por `scripts/converter_manchas_altura.py` (não altera os conversores dos demais cenários) e tratadas como cenários comuns no restante do pipeline — mesma junção espacial `intersects`/`overlay` da seção 1, mesmos indicadores por setor da seção 2.
+$$\text{pop\_atingida} \approx \text{pop\_total} \times \frac{\sum_{\text{pixel} \,\in\, \text{mancha}} \text{alfa}}{\sum_{\text{pixel}} \text{alfa}}$$
+
+Ver `scripts/estimar_populacao_atingida.py`. É uma aproximação — sujeita à quantização de 256 níveis do PNG e a qualquer divergência entre o alfa exibido e a densidade real — não o mesmo método (resolução muito maior) dos demais cenários.
+
+#### Manchas de altura da lâmina d'água (Nível da Lagoa + Chuva Acumulada)
+
+Um cenário adicional que combina duas simulações entregues como rasters de profundidade por bacia hidrográfica pela plataforma Economia Azul (GPEA/FURG), com estilo de visualização definido em QGIS (`.qml`). Processado por `scripts/converter_manchas_altura.py` (não altera os conversores dos demais cenários) e tratado como um cenário comum no restante do pipeline — mesma junção espacial `intersects`/`overlay` da seção 1, mesmos indicadores por setor da seção 2. A área atingida final é a **união** das duas simulações.
 
 **Nível da Lagoa – 16/05/2024, 20h.** Simulação de elevação do nível da lagoa. Fonte: mosaico dos rasters de profundidade das bacias 1–5 e 7 (`profundidade_Valor_21_cm_pontosNaMao.tif`, EPSG:31982, ~1 m/pixel). Cada pixel é a profundidade da lâmina d'água em cm. Rampa de cor (extraída do `.qml`, `classificationMode="DISCRETE"`):
 
@@ -150,15 +156,15 @@ Duas manchas adicionais, entregues como rasters de profundidade por bacia hidrog
 | 125 – 144 | `#ff7f00` (laranja) |
 | ≥ 145 | `#ff0000` (vermelho) |
 
-A "área atingida" usada na junção espacial com as demais camadas é o limiar **≥ 45 cm** (primeira classe visível do `.qml`) — pixels vetorizados com `rasterio.features.shapes`, dissolvidos e suavizados (buffer de abertura/fechamento + simplificação, tolerância sub-métrica para preservar ruas estreitas alagadas).
+O limiar **≥ 45 cm** (primeira classe visível do `.qml`) entra na área atingida.
 
-**Chuva Acumulada – 60,8 mm.** Simulação de acúmulo de água de chuva sobre a área urbana central, para uma precipitação de 60,8 mm. Fonte: mosaico dos rasters das bacias 1–5 (`bacia{N}_valor19.tif`, EPSG:31982). O pixel armazena um valor de saída do modelo ("valor19"), não diretamente em cm. O `.qml` (renderizador `paletted`) classifica de forma quase binária: valor < 86 → transparente; **valor 86–253 → lilás `#e3bdff` (visível)**; valor ≥ 254 → transparente novamente (interpretado como água pré-existente — lagoa/canais — e não como alagamento novo pela chuva). Segundo a fonte, o corte inferior (86) corresponde a uma lâmina d'água de aproximadamente **10 cm**.
+**Chuva Acumulada – 60,8 mm.** Simulação de acúmulo de água de chuva sobre a área urbana central, para uma precipitação de 60,8 mm. Fonte: mosaico dos rasters das bacias 1–5 (`bacia{N}_valor19.tif`, EPSG:31982). O pixel armazena um valor de saída do modelo ("valor19"), não diretamente em cm. O `.qml` (renderizador `paletted`) classifica de forma quase binária: valor < 86 → transparente; **valor 86–253 → lilás `#ba82e6` (visível)**; valor ≥ 254 → transparente novamente (interpretado como água pré-existente — lagoa/canais — e não como alagamento novo pela chuva). Segundo a fonte, o corte inferior (86) corresponde a uma lâmina d'água de aproximadamente **10 cm**. Essa classificação é replicada **literalmente**: apenas pixels com valor entre 86 e 253 entram na área atingida — valores ≥254 ficam de fora.
 
-A "área atingida" replica essa classificação **literalmente**: apenas pixels com valor entre 86 e 253 (inclusive/exclusive) entram na mancha vetorizada e no cruzamento espacial com as demais camadas — valores ≥254 ficam de fora tanto da visualização quanto do cálculo de impacto.
+**Combinação.** As duas simulações são reprojetadas para uma grade compartilhada (`compute_shared_grid`/`reproject_group`). A "área atingida" final é a união booleana das duas máscaras (Lagoa ≥45cm OR Chuva 86–253) — vetorizada com `rasterio.features.shapes`, dissolvida e simplificada (tolerância sub-métrica, para preservar ruas estreitas alagadas), e usada como a mancha do cenário no cruzamento espacial com as demais camadas. No raster visual, a classificação de profundidade da Lagoa tem **prioridade** onde as duas simulações se sobrepõem — o lilás da Chuva Acumulada só aparece onde a Lagoa não tem cobertura.
 
-**Perdas operacionais.** As duas manchas foram incluídas em `CENARIOS`/`CENARIO_PERIODO` de `calcular_perdas_rio_grande.py`, usando os mesmos parâmetros DaLA (dias agudo/recuperação) e coeficientes agrícolas do período "maio_2024", por serem simulações do mesmo evento (16/05/2024).
+**Perdas operacionais.** O cenário combinado foi incluído em `CENARIOS`/`CENARIO_PERIODO` de `calcular_perdas_rio_grande.py`, usando os mesmos parâmetros DaLA (dias agudo/recuperação) e coeficientes agrícolas do período "maio_2024".
 
-**Renderização.** Diferente dos demais cenários (preenchimento de cor única + contorno), estas duas manchas são exibidas como imagem raster colorida (`Source type="image"`) sobreposta ao contorno vetorial, preservando o gradiente/classificação original — ver `ALTURA_MANCHAS` em [app/page.tsx](app/page.tsx).
+**Renderização.** Diferente dos demais cenários (preenchimento de cor única + contorno), este cenário é exibido como imagem raster colorida (`Source type="image"`), preservando o gradiente/classificação original — ver `ALTURA_MANCHAS` em [app/page.tsx](app/page.tsx).
 
 ### 3. Formatos de arquivo e desempenho
 
@@ -187,7 +193,7 @@ Pontos são clusterizados automaticamente pelo MapLibre GL (raio 50 px). A bound
 
 ### 5. Permalink
 
-O cenário ativo é persistido na URL via `?c=<slug>` usando `history.replaceState`. O slug é lido por `ref` na inicialização para evitar re-renderizações desnecessárias.
+O cenário ativo é persistido na URL via `?cenario=<código>` usando `history.replaceState`, junto com `lat`/`lng`/`zoom` para a posição do mapa. O código de cada cenário é um identificador curto e legível (`CENARIO_URL_SLUGS` em [app/page.tsx](app/page.tsx)), independente do slug interno usado nos nomes de arquivo (`scenarioSlug`/`slugify`) — desacopla a estética do link compartilhável da convenção de nomenclatura dos dados. O código é lido por `ref` na inicialização (não em `useEffect`) para evitar re-renderizações desnecessárias e para estar disponível a tempo de influenciar a primeira carga de dados.
 
 ---
 

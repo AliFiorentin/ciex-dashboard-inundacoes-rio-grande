@@ -11,7 +11,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 import {
   Building2, GraduationCap, HeartPulse, Wrench, Leaf, Sprout, Landmark, Users, Layers,
-  Download, Printer, EyeOff, SlidersHorizontal, PanelLeft, PanelRightClose, TrendingDown,
+  Download, Printer, EyeOff, SlidersHorizontal, PanelLeft, PanelRightClose, TrendingDown, Info,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -32,11 +32,9 @@ const COLORS = {
 };
 
 const INFRA_COLORS: Record<string, string> = {
-  "Logradouros":      "#e67e22",
-  "Quadras":          "#8e44ad",
-  "Terrenos":         "#27ae60",
-  "Prédios Públicos": "#2980b9",
-  "Segurança":        "#c0392b",
+  "Logradouros": "#e67e22",
+  "Quadras":     "#8e44ad",
+  "Terrenos":    "#27ae60",
 };
 
 // Coordenadas geográficas dos rasters MapaBiomas (EPSG:4326): [NW, NE, SE, SW]
@@ -82,21 +80,37 @@ const C = {
 const CENARIOS = [
   "Cenário Maio 2024",
   "Cenário Maio 2024 + 50%",
-  "Nível da Lagoa – 16/05/2024",
-  "Chuva Acumulada – 60,8mm",
+  "Nível da Lagoa + Chuva Acumulada – 16/05/2024",
 ];
+
+// Códigos curtos e legíveis para a URL (?cenario=<código>) — independentes do
+// slug interno usado nos nomes de arquivo (scenarioSlug/slugify), para não
+// acoplar a estética do link compartilhável à convenção de nomenclatura dos
+// dados. Todo cenário novo precisa de uma entrada aqui.
+const CENARIO_URL_SLUGS: Record<string, string> = {
+  "Cenário Maio 2024":                             "maio-2024",
+  "Cenário Maio 2024 + 50%":                        "maio-2024-mais-50",
+  "Nível da Lagoa + Chuva Acumulada – 16/05/2024": "lagoa-chuva-16-05-2024",
+};
+const cenarioParaUrl = (nome: string) => CENARIO_URL_SLUGS[nome] ?? slugify(nome);
+const urlParaCenario = (codigo: string) => CENARIOS.find(c => CENARIO_URL_SLUGS[c] === codigo);
+
+const AVISO_MANCHA_BINARIA = "Mancha binária: áreas com lâmina d'água ≥ 10 cm decorrente de acúmulo de chuva. Não indica extensão de alagamento contínuo nem profundidade além do limiar mínimo.";
 
 // Manchas estilizadas por raster (altura da lâmina d'água), em vez do
 // preenchimento de cor única usado pelos demais cenários. Bounds e paleta
 // derivados do estilo QGIS (.qml) original — ver scripts/converter_manchas_altura.py
 // e README.md ("Manchas de altura da lâmina d'água") para a metodologia completa.
+// A área atingida é a união das duas simulações (nível da lagoa + chuva
+// acumulada); no raster, a classificação da Lagoa tem prioridade onde as
+// duas se sobrepõem, com o lilás da Chuva preenchendo o restante.
 const ALTURA_MANCHAS: Record<string, {
   coords: [[number, number], [number, number], [number, number], [number, number]];
   legenda: { label: string; cor: string }[];
 }> = {
-  "Nível da Lagoa – 16/05/2024": {
+  "Nível da Lagoa + Chuva Acumulada – 16/05/2024": {
     coords: [
-      [-52.204013, -32.023926],   // NW
+      [-52.204013, -32.023926],   // NW — preencher com o output do script
       [-52.071023, -32.023926],   // NE
       [-52.071023, -32.105200],   // SE
       [-52.204013, -32.105200],   // SW
@@ -108,25 +122,12 @@ const ALTURA_MANCHAS: Record<string, {
       { label: "105–124 cm", cor: "#ffff00" },
       { label: "125–144 cm", cor: "#ff7f00" },
       { label: "≥145 cm",    cor: "#ff0000" },
-    ],
-  },
-  "Chuva Acumulada – 60,8mm": {
-    coords: [
-      [-52.202862, -32.025415],   // NW
-      [-52.071059, -32.025415],   // NE
-      [-52.071059, -32.087840],   // SE
-      [-52.202862, -32.087840],   // SW
-    ],
-    legenda: [
-      { label: "Lâmina ≥10cm", cor: "#ba82e6" },
+      { label: "Chuva acumulada ≥10cm", cor: "#ba82e6" },
     ],
   },
 };
 
-const INFRA_LAYERS = [
-  "Logradouros", "Quadras", "Terrenos",
-  "Prédios Públicos", "Segurança",
-];
+const INFRA_LAYERS = ["Logradouros", "Quadras", "Terrenos"];
 
 const EMPTY_GEO: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
@@ -261,36 +262,6 @@ const calcPatrimonio = (base: any) => {
   return { total: base.features.length, tipos };
 };
 
-// Conta features onde prop numérica == 1 (flag 0/1) ou string "1"/"sim"/"true"
-const countFlag = (feats: any[], prop: string): number => {
-  if (!feats?.length) return 0;
-  return feats.filter(f => {
-    const v = f.properties?.[prop];
-    if (v === null || v === undefined) return false;
-    const n = Number(v);
-    if (!isNaN(n)) return n === 1;
-    return ["1","sim","true","yes"].includes(String(v).trim().toLowerCase());
-  }).length;
-};
-
-// Conta features onde prop string está em um conjunto de valores
-const countEquals = (feats: any[], prop: string, values: string[]): number => {
-  if (!feats?.length) return 0;
-  const set = new Set(values.map(v => v.toLowerCase()));
-  return feats.filter(f => set.has(String(f.properties?.[prop] ?? "").trim().toLowerCase())).length;
-};
-
-// Ruas únicas pelo nome composto (tipo + nome)
-const countRuasUnicas = (feats: any[]): number => {
-  if (!feats?.length) return 0;
-  const ids = new Set(feats.map(f => {
-    const tipo = (f.properties?.tipo ?? f.properties?.Tipo ?? "").toString().trim();
-    const nome = (f.properties?.nome ?? f.properties?.Nome ?? "").toString().trim();
-    return tipo || nome ? `${tipo} ${nome}`.trim() : null;
-  }).filter(Boolean));
-  return ids.size || feats.length;
-};
-
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -305,7 +276,7 @@ export default function Dashboard() {
       return { longitude: -52.10339, latitude: -32.03563, zoom: 13.29, pitch: 0, bearing: 0 };
     }
     const p = new URLSearchParams(window.location.search);
-    const z = p.get('z');
+    const z = p.get('zoom');
     const lat = p.get('lat');
     const lng = p.get('lng');
 
@@ -317,16 +288,26 @@ export default function Dashboard() {
       bearing: 0,
     };
   });
-  const permalinkCenarioRef = useRef<string | null>(null);
+  // Lido diretamente na inicialização (não em useEffect) porque o efeito que
+  // carrega base+atingidos+mancha roda antes de qualquer outro useEffect com
+  // deps vazias definido mais abaixo no componente — um useEffect separado só
+  // para ler `?cenario=` nunca chegaria a tempo de influenciar essa primeira carga.
+  const permalinkCenarioRef = useRef<string | null>(
+    typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("cenario")
+  );
   const headerRef = useRef<HTMLElement>(null);
   // Deslocamento vertical dos painéis flutuantes; acompanha a altura do header
   // (que cresce quando os botões de camada quebram linha em telas menores).
   const [panelTop, setPanelTop] = useState(90);
 
   const [cenario, setCenario] = useState<string>("(nenhum)");
+  // Aviso metodológico temporário ao selecionar cenários com mancha binária
+  // (ex.: o componente de chuva acumulada da mancha combinada) — some sozinho
+  // após 10s ou ao ser fechado manualmente.
+  const [avisoMancha, setAvisoMancha] = useState<string | null>(null);
 
   const [camadas,     setCamadas]     = useState<string[]>(["Empresas", "Saúde", "Educação", "Agricultura", "Uso e Cobertura da Terra", "Infraestrutura", "Patrimônio Histórico"]);
-  const [infraAtivas, setInfraAtivas] = useState<string[]>(["Logradouros", "Quadras", "Terrenos"]);
+  const [infraAtivas, setInfraAtivas] = useState<string[]>(["Logradouros", "Terrenos"]);
   const [tabAtiva,    setTabAtiva]    = useState("empresas");
   const [mapReady, setMapReady] = useState(false);
   const [showHeatmapPopulacao, setShowHeatmapPopulacao] = useState(false);
@@ -358,6 +339,11 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
   const [baseCobertura, setBaseCobertura] = useState<any>(null);
   const [baseAgricultura,  setBaseAgricultura]  = useState<any>(null);
   const [baseInfra,        setBaseInfra]        = useState<Record<string, any>>({});
+  // Estatísticas de infra pré-computadas offline (contagens/flags por camada) —
+  // permite o Painel mostrar todas as camadas de Infraestrutura mesmo as que
+  // não estão ativas no mapa, sem precisar baixar a geometria completa
+  // (Terrenos sozinho tem ~28MB). Ver scripts/gerar_infra_stats.py.
+  const [infraStats, setInfraStats] = useState<Record<string, any> | null>(null);
   const [basePatrimonio,   setBasePatrimonio]   = useState<any>(null);
 
   const [atingidosEmpresas,    setAtingidosEmpresas]    = useState<any>(null);
@@ -387,9 +373,11 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
 
     const desired = permalinkCenarioRef.current;
     permalinkCenarioRef.current = null;
-    const initialCenario = (desired && CENARIOS.includes(desired)) ? desired : CENARIOS[0];
+    // `desired` é o código amigável da URL (CENARIO_URL_SLUGS) — ver o efeito
+    // que escreve `?cenario=`, mais abaixo.
+    const initialCenario = (desired && urlParaCenario(desired)) || CENARIOS[0];
     const sSlug = scenarioSlug(initialCenario);
-    const defaultInfra = ["Logradouros", "Quadras", "Terrenos"];
+    const defaultInfra = ["Logradouros", "Terrenos"]; // deve bater com infraAtivas inicial
 
     const infraAtingidosPromises = defaultInfra.map(infra => {
       const iSlug = slugify(infra);
@@ -418,7 +406,8 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       fetch(`/dados_convertidos/rio_grande/cenarios/patrimonio_ATINGIDOS_${sSlug}.geojson`, { signal }).then(r => r.ok ? r.json() : null),
       fetch("/dados_convertidos/populacao_atingida.json", { signal }).then(r => r.ok ? r.json() : null),
       Promise.all(infraAtingidosPromises),
-    ]).then(([emp, edu, sau, cob, agr, patr, mancha, aEmp, aEdu, aSau, aCob, aAgr, aPatr, popJson, infraResults]) => {
+      fetch(`/dados_convertidos/rio_grande/cenarios/infra_stats_${sSlug}.json`, { signal }).then(r => r.ok ? r.json() : null),
+    ]).then(([emp, edu, sau, cob, agr, patr, mancha, aEmp, aEdu, aSau, aCob, aAgr, aPatr, popJson, infraResults, infraStatsJson]) => {
       if (signal.aborted) return;
 
       if (popJson) setPopData(popJson);
@@ -429,6 +418,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       const infraData: Record<string, any> = {};
       (infraResults as any[]).forEach(({ infra, d }) => { if (d) infraData[infra] = d; });
       setAtingidosInfra(infraData);
+      setInfraStats(infraStatsJson);
 
       skipInitialScenarioRef.current = true;
       setCenario(initialCenario);
@@ -460,9 +450,10 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
     const params = new URLSearchParams(window.location.search);
     params.set('lng', center.lng.toFixed(5));
     params.set('lat', center.lat.toFixed(5));
-    params.set('z', zoom.toFixed(2));
+    params.set('zoom', zoom.toFixed(2));
     params.delete('p');
     params.delete('b');
+    params.delete('z'); // nome antigo do parâmetro (agora `zoom`)
 
     window.history.replaceState(null, '', `?${params.toString()}`);
   };
@@ -525,16 +516,18 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
           loadFGB(`/dados_convertidos/rio_grande/cenarios/cobertura_ATINGIDOS_${sSlug}.fgb`,   signal),
           loadFGB(`/dados_convertidos/rio_grande/cenarios/agricultura_ATINGIDOS_${sSlug}.fgb`, signal),
           fetch(`/dados_convertidos/rio_grande/cenarios/patrimonio_ATINGIDOS_${sSlug}.geojson`, { signal }).then(r => r.ok ? r.json() : null),
-          Promise.all(infraPromises)
+          Promise.all(infraPromises),
+          fetch(`/dados_convertidos/rio_grande/cenarios/infra_stats_${sSlug}.json`, { signal }).then(r => r.ok ? r.json() : null),
         ]);
 
         return Promise.all([dataPromises, Promise.resolve(mancha)]);
       })
       .then((res) => {
         if (!res || signal.aborted) return;
-        const [[emp, edu, sau, cob, agr, patr, infraResults], mancha] = res;
+        const [[emp, edu, sau, cob, agr, patr, infraResults, infraStatsJson], mancha] = res;
 
         setManchaCenario(mancha);
+        setInfraStats(infraStatsJson);
         setAtingidosEmpresas(emp);
         setAtingidosEducacao(edu);
         setAtingidosSaude(sau);
@@ -596,18 +589,29 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
     return () => ctrl.abort();
   }, [infraAtivas]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Permalink
+  // Permalink (leitura do `?cenario=` inicial acontece na inicialização do ref, acima)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const c = params.get("c");
-    if (c) permalinkCenarioRef.current = c;
+    const params = new URLSearchParams();
+    if (cenario !== "(nenhum)") params.set("cenario", cenarioParaUrl(cenario));
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+  }, [cenario]);
+
+  // Aviso metodológico: mancha binária (componente de chuva acumulada) —
+  // some sozinho após 10s, tanto ao trocar de cenário quanto ao ser reaberto
+  // sob demanda pelo botão de info do Painel (avisoManchaTimerRef evita dois
+  // timers concorrentes fecharem um ao outro cedo demais).
+  const avisoManchaTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mostrarAvisoMancha = useCallback((texto: string) => {
+    if (avisoManchaTimerRef.current) clearTimeout(avisoManchaTimerRef.current);
+    setAvisoMancha(texto);
+    avisoManchaTimerRef.current = setTimeout(() => setAvisoMancha(null), 10000);
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (cenario !== "(nenhum)") params.set("c", slugify(cenario));
-    const qs = params.toString();
-    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+    if (ALTURA_MANCHAS[cenario]) mostrarAvisoMancha(AVISO_MANCHA_BINARIA);
+    else setAvisoMancha(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cenario]);
 
   // Mede a altura do header e reposiciona os painéis (para quando os botões
@@ -980,8 +984,6 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       const nomeLower = source.replace("infra-", "");
       let content: React.ReactNode = null;
       if (nomeLower === "imoveis") content = (<><div className="text-[10px] flex justify-between gap-2 border-b border-slate-50 pb-0.5"><span className="text-slate-500 uppercase font-bold">Uso:</span><span className="text-slate-800 font-medium text-right">{p.Uso || "—"}</span></div><div className="text-[10px] flex justify-between gap-2 border-b border-slate-50 pb-0.5"><span className="text-slate-500 uppercase font-bold">Patrimônio:</span><span className="text-slate-800 font-medium text-right">{p.Patrim || "—"}</span></div><div className="text-[10px] flex justify-between gap-2"><span className="text-slate-500 uppercase font-bold">Condomínio:</span><span className="text-slate-800 font-medium text-right">{p.Condom || "—"}</span></div></>);
-      else if (nomeLower === "predios_publicos") content = (<><div className="text-[10px] flex justify-between gap-2 border-b border-slate-50 pb-0.5"><span className="text-slate-500 uppercase font-bold">Nome:</span><span className="text-slate-800 font-medium text-right">{p.Nome || "—"}</span></div><div className="text-[10px] flex justify-between gap-2"><span className="text-slate-500 uppercase font-bold">Endereço:</span><span className="text-slate-800 font-medium text-right">{p["Endereço"] || "—"}</span></div></>);
-      else if (nomeLower === "seguranca") content = (<><div className="text-[10px] flex justify-between gap-2 border-b border-slate-50 pb-0.5"><span className="text-slate-500 uppercase font-bold">Nome:</span><span className="text-slate-800 font-medium text-right">{p.Nome || "—"}</span></div><div className="text-[10px] flex justify-between gap-2"><span className="text-slate-500 uppercase font-bold">Endereço:</span><span className="text-slate-800 font-medium text-right">{p["Endereço"] || "—"}</span></div></>);
       else if (nomeLower === "logradouros" && (p.nome || p.tipo)) content = (<>{p.tipo && <div className="text-[10px] flex justify-between gap-2 border-b border-slate-50 pb-0.5"><span className="text-slate-500 uppercase font-bold">Tipo:</span><span className="text-slate-800 font-medium text-right">{p.tipo}</span></div>}{p.nome && String(p.nome).length > 1 && <div className="text-[10px] flex justify-between gap-2"><span className="text-slate-500 uppercase font-bold">Nome:</span><span className="text-slate-800 font-medium text-right">{p.nome}</span></div>}</>);
       else if (nomeLower === "quadras" && (p.codigo || p.Area_m2)) content = (<>{p.codigo && <div className="text-[10px] flex justify-between gap-2 border-b border-slate-50 pb-0.5"><span className="text-slate-500 uppercase font-bold">Código:</span><span className="text-slate-800 font-medium text-right">{p.codigo}</span></div>}{p.Area_m2 && <div className="text-[10px] flex justify-between gap-2"><span className="text-slate-500 uppercase font-bold">Área:</span><span className="text-slate-800 font-medium text-right">{Number(p.Area_m2).toFixed(1)} m²</span></div>}</>);
       if (!content) return null;
@@ -1025,7 +1027,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
   useEffect(() => {
     if (tabAtiva === "agricultura" && !camadas.includes("Agricultura"))              setTabAtiva("empresas");
     if (tabAtiva === "cobertura"   && !camadas.includes("Uso e Cobertura da Terra")) setTabAtiva("empresas");
-    if (tabAtiva === "infra" && (!camadas.includes("Infraestrutura") || infraAtivas.length === 0)) setTabAtiva("empresas");
+    if (tabAtiva === "infra" && !camadas.includes("Infraestrutura")) setTabAtiva("empresas");
     if (tabAtiva === "patrimonio" && !camadas.includes("Patrimônio Histórico")) setTabAtiva("empresas");
   }, [camadas, infraAtivas, tabAtiva]);
 
@@ -1089,7 +1091,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
               url={`/dados_convertidos/rio_grande/cenarios/altura_raster_${scenarioSlug(cenario)}.png`}
               coordinates={ALTURA_MANCHAS[cenario].coords}
             >
-              <Layer beforeId="anchor-mancha" id="mancha-altura-raster" type="raster" paint={{ "raster-opacity": 0.85, "raster-resampling": "nearest" }} />
+              <Layer beforeId="anchor-mancha" id="mancha-altura-raster" type="raster" paint={{ "raster-opacity": 0.85, "raster-resampling": "linear" }} />
             </Source>
           )}
 
@@ -1189,8 +1191,8 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
 
           {/* Ordem z (do fundo para o topo): Mancha → Infraestrutura → Agricultura → Cobertura → Prédios 3D → Empresas/Educação/Saúde/Patrimônio */}
 
-          {/* Infra em ordem z: Segurança → Prédios → Logradouros → Terrenos → Quadras (último=fundo) */}
-          {mapReady && baseReady && camadas.includes("Infraestrutura") && ["Segurança", "Prédios Públicos", "Logradouros", "Terrenos", "Quadras"].map(nome => {
+          {/* Infra em ordem z: Logradouros → Terrenos → Quadras (último=fundo) */}
+          {mapReady && baseReady && camadas.includes("Infraestrutura") && ["Logradouros", "Terrenos", "Quadras"].map(nome => {
             const total = baseInfra[nome];
             if (!total || !infraAtivas.includes(nome)) return null;
             const sid = `infra-${slugify(nome)}`;
@@ -1334,13 +1336,27 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             {manchaCenario && showMancha && (
               ALTURA_MANCHAS[cenario]
                 ? ALTURA_MANCHAS[cenario].legenda.map(({ label, cor }) => (
-                    <LegendItem key={`altura-${label}`} cor={cor} label={label} />
+                    <LegendItem key={`altura-${label}`} cor={cor} label={label} area />
                   ))
                 : <LegendItem cor={COLORS.cenario} label={cenario} area />
             )}
           </div>
         )}
       </div>
+
+      {/* ── Aviso metodológico (mancha binária) ─────────────────────────── */}
+      {avisoMancha && (
+        <div className="absolute inset-x-0 flex justify-center z-20 print:hidden px-4" style={{ top: panelTop }}>
+          <div className="flex items-start gap-2 px-3.5 py-2.5 rounded-xl shadow-2xl max-w-md animate-fade-in-up" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
+            <span className="text-sm leading-none shrink-0 mt-0.5">⚠️</span>
+            <p className="text-[11px] leading-snug" style={{ color: C.primary }}>{avisoMancha}</p>
+            <button onClick={() => setAvisoMancha(null)} aria-label="Fechar aviso"
+              className="shrink-0 rounded p-0.5 hover:bg-slate-100 transition-colors" style={{ color: C.muted }}>
+              <span className="text-[13px] leading-none">✕</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Copyright ────────────────────────────────────────────────── */}
       <div className="absolute bottom-4 inset-x-0 flex justify-center z-10 print:hidden pointer-events-none">
@@ -1629,6 +1645,12 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             <h2 className="text-base font-black tracking-tight flex items-center justify-between" style={{ color: C.primary }}>
               Painel
               <div className="flex gap-1">
+                {ALTURA_MANCHAS[cenario] && (
+                  <button onClick={() => mostrarAvisoMancha(AVISO_MANCHA_BINARIA)} title="Sobre a mancha binária"
+                    className="flex items-center justify-center w-6 h-6 rounded-md active-press hover-lift bg-slate-200/80 hover:bg-slate-300 text-slate-700 print:hidden">
+                    <Info size={12} strokeWidth={2.5} />
+                  </button>
+                )}
                 <button onClick={exportarExcel} className="flex items-center gap-1 text-[9px] text-white font-bold px-2 py-1 rounded-md active-press hover-lift cursor-pointer" style={{ backgroundColor: C.primary }}>
                   <Download size={10} strokeWidth={2.5} />Baixar
                 </button>
@@ -1652,7 +1674,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 { value: "saude",       label: "Saúde",       icon: <HeartPulse    size={11} strokeWidth={2.5} /> },
                 { value: "educacao",    label: "Educação",    icon: <GraduationCap size={11} strokeWidth={2.5} /> },
                 ...( camadas.includes("Patrimônio Histórico") ? [{ value: "patrimonio", label: "Patrimônio", icon: <Landmark size={11} strokeWidth={2.5} /> }] : []),
-                ...( camadas.includes("Infraestrutura") && infraAtivas.length > 0 ? [{ value: "infra",       label: "Infraestrutura", icon: <Wrench  size={11} strokeWidth={2.5} /> }] : []),
+                ...( camadas.includes("Infraestrutura") ? [{ value: "infra",       label: "Infraestrutura", icon: <Wrench  size={11} strokeWidth={2.5} /> }] : []),
                 ...( camadas.includes("Agricultura")              ? [{ value: "agricultura", label: "Agricultura", icon: <Sprout  size={11} strokeWidth={2.5} /> }] : []),
                 ...( camadas.includes("Uso e Cobertura da Terra") ? [{ value: "cobertura",   label: "Cobertura",   icon: <Leaf    size={11} strokeWidth={2.5} /> }] : []),
               ] as { value: string; label: string; icon: React.ReactNode }[]).map(({ value, label, icon }) => (
@@ -2296,223 +2318,141 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
               </TabsContent>
             )}
 
-            {/* Infraestrutura */}
-            {camadas.includes("Infraestrutura") && infraAtivas.length > 0 && (
+            {/* Infraestrutura — mostra todas as camadas (Logradouros/Quadras/Terrenos)
+                mesmo as não ativas no mapa, usando estatísticas pré-computadas
+                offline (infraStats) em vez da geometria completa: Terrenos sozinho
+                tem ~28MB e só é buscado quando ativado no mapa. O toggle de cada
+                camada continua controlando apenas a visibilidade no mapa. */}
+            {camadas.includes("Infraestrutura") && (
               <TabsContent value="infra" className="flex-1 overflow-y-auto mt-4 pr-2 pb-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full">
+                {!infraStats ? (
+                  <div className="flex flex-col gap-5 pb-2">
+                    <Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" />
+                  </div>
+                ) : (
                 <div className="flex flex-col gap-5 pb-2 animate-fade-in-up">
 
                   {/* ── Logradouros ── */}
-                  {infraAtivas.includes("Logradouros") && (() => {
-                    const base    = baseInfra["Logradouros"];
-                    const atg     = atingidosInfra["Logradouros"];
-                    const baseF   = base?.features   ?? [];
-                    const atgF    = atg?.features    ?? [];
-                    const src     = isCenarioAtivo ? atgF : baseF;
-                    const segBase = baseF.length;
-                    const segAtg  = atgF.length;
-                    const ruasBase = countRuasUnicas(baseF);
-                    const ruasAtg  = countRuasUnicas(atgF);
-                    const drenBase = countFlag(baseF, "drenagem");
-                    const drenAtg  = countFlag(atgF,  "drenagem");
-                    const ilumBase = countFlag(baseF, "iluminacao");
-                    const ilumAtg  = countFlag(atgF,  "iluminacao");
+                  {(() => {
+                    const s = infraStats["Logradouros"];
+                    if (!s) return null;
+                    const ruasLista: string[] = s.ruas_atingidas_lista ?? [];
                     return (
                       <div>
                         <h3 className="text-[11px] font-black uppercase tracking-wider pb-1 mb-2 flex items-center gap-1.5" style={{ color: INFRA_COLORS["Logradouros"], borderBottom: `1px solid ${C.border}` }}>
                           <span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ backgroundColor: INFRA_COLORS["Logradouros"] }} />
                           Logradouros
+                          {!infraAtivas.includes("Logradouros") && <span className="normal-case font-normal text-[9px] ml-auto" style={{ color: C.muted }}>oculto no mapa</span>}
                         </h3>
-                        {!base ? <div className="flex flex-col gap-2"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : (
-                          <>
-                            <div className="flex flex-col gap-2 mb-2">
-                              <KPIRow isLoading={isLoading} titulo="Segmentos" cor={INFRA_COLORS["Logradouros"]} valor={compactoBr(isCenarioAtivo ? segAtg  : segBase,  0)} sub={isCenarioAtivo ? "Atingidos" : "Total"} delta={isCenarioAtivo ? `de ${compactoBr(segBase,  0)} (${calcPct(segAtg,  segBase)})` : undefined} />
-                              <div className="flex flex-col gap-1.5">
-                                <KPIRow isLoading={isLoading} titulo="Ruas Únicas" cor={INFRA_COLORS["Logradouros"]} valor={compactoBr(isCenarioAtivo ? ruasAtg : ruasBase, 0)} sub={isCenarioAtivo ? "Atingidas" : "Total"} delta={isCenarioAtivo ? `de ${compactoBr(ruasBase, 0)} (${calcPct(ruasAtg, ruasBase)})` : undefined} />
-                                {isCenarioAtivo && (() => {
-                                  const seen = new Set<string>();
-                                  const ruasLista: string[] = [];
-                                  atgF.forEach((f: any) => {
-                                    const tipo = String(f.properties?.tipo ?? "").trim().toUpperCase();
-                                    const nome = String(f.properties?.nome ?? "").trim().toUpperCase();
-                                    const label = [tipo, nome].filter(Boolean).join(" ");
-                                    if (label && !seen.has(label)) { seen.add(label); ruasLista.push(label); }
-                                  });
-                                  ruasLista.sort((a, b) => a.localeCompare(b, "pt-BR"));
-                                  return (
-                                    <>
-                                      <button onClick={() => setShowListaLogradouros(p => !p)}
-                                        className="w-full flex items-center justify-between text-[10px] font-bold px-2.5 py-1.5 rounded-lg"
-                                        style={{ backgroundColor: C.cardBg, color: C.primary, border: `1px solid ${C.border}` }}>
-                                        <span>Ruas Atingidas ({ruasLista.length})</span>
-                                        <span style={{ fontSize: 9 }}>{showListaLogradouros ? "▲" : "▼"}</span>
-                                      </button>
-                                      {showListaLogradouros && (
-                                        <div className="flex flex-col gap-0.5 max-h-52 overflow-y-auto rounded-lg p-1.5" style={{ backgroundColor: C.cardBg, border: `1px solid ${C.border}` }}>
-                                          {ruasLista.map((label, i) => (
-                                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: C.muted }} title={label}>{label}</span>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </>
-                                  );
-                                })()}
+                        <div className="flex flex-col gap-2 mb-2">
+                          <KPIRow isLoading={isLoading} titulo="Segmentos" cor={INFRA_COLORS["Logradouros"]} valor={compactoBr(isCenarioAtivo ? s.segmentos_atingidos : s.segmentos_total, 0)} sub={isCenarioAtivo ? "Atingidos" : "Total"} delta={isCenarioAtivo ? `de ${compactoBr(s.segmentos_total, 0)} (${calcPct(s.segmentos_atingidos, s.segmentos_total)})` : undefined} />
+                          <div className="flex flex-col gap-1.5">
+                            <KPIRow isLoading={isLoading} titulo="Ruas Únicas" cor={INFRA_COLORS["Logradouros"]} valor={compactoBr(isCenarioAtivo ? s.ruas_atingidas : s.ruas_total, 0)} sub={isCenarioAtivo ? "Atingidas" : "Total"} delta={isCenarioAtivo ? `de ${compactoBr(s.ruas_total, 0)} (${calcPct(s.ruas_atingidas, s.ruas_total)})` : undefined} />
+                            {isCenarioAtivo && ruasLista.length > 0 && (
+                              <>
+                                <button onClick={() => setShowListaLogradouros(p => !p)}
+                                  className="w-full flex items-center justify-between text-[10px] font-bold px-2.5 py-1.5 rounded-lg"
+                                  style={{ backgroundColor: C.cardBg, color: C.primary, border: `1px solid ${C.border}` }}>
+                                  <span>Ruas Atingidas ({ruasLista.length})</span>
+                                  <span style={{ fontSize: 9 }}>{showListaLogradouros ? "▲" : "▼"}</span>
+                                </button>
+                                {showListaLogradouros && (
+                                  <div className="flex flex-col gap-0.5 max-h-52 overflow-y-auto rounded-lg p-1.5" style={{ backgroundColor: C.cardBg, border: `1px solid ${C.border}` }}>
+                                    {ruasLista.map((label, i) => (
+                                      <span key={i} className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: C.muted }} title={label}>{label}</span>
+                                    ))}
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                          {s.segmentos_total > 0 && (
+                            <>
+                              <h3 className="text-[10px] font-bold uppercase tracking-wider pt-2 pb-1 border-t" style={{ color: INFRA_COLORS["Logradouros"], borderColor: C.border }}>
+                                Cobertura de Serviços <span className="normal-case font-normal text-[9px]" style={{ color: C.muted }}>— de {compactoBr(s.segmentos_total,0)} segmentos</span>
+                              </h3>
+                              <div className="flex flex-col gap-2">
+                                <BarServico label="Drenagem"   value={isCenarioAtivo ? s.drenagem_atingidos   : s.drenagem_total}   total={isCenarioAtivo ? s.drenagem_total   : s.segmentos_total} cor={INFRA_COLORS["Logradouros"]} />
+                                <BarServico label="Iluminação" value={isCenarioAtivo ? s.iluminacao_atingidos : s.iluminacao_total} total={isCenarioAtivo ? s.iluminacao_total : s.segmentos_total} cor={INFRA_COLORS["Logradouros"]} />
                               </div>
-                              {(isCenarioAtivo ? atgF.length : baseF.length) > 0 && (() => {
-                                const cor   = INFRA_COLORS["Logradouros"];
-                                return (
-                                  <>
-                                    <h3 className="text-[10px] font-bold uppercase tracking-wider pt-2 pb-1 border-t" style={{ color: INFRA_COLORS["Logradouros"], borderColor: C.border }}>
-                                      Cobertura de Serviços <span className="normal-case font-normal text-[9px]" style={{ color: C.muted }}>— de {compactoBr(baseF.length,0)} segmentos</span>
-                                    </h3>
-                                    <div className="flex flex-col gap-2">
-                                      <BarServico label="Drenagem"   value={isCenarioAtivo ? drenAtg : drenBase} total={isCenarioAtivo ? drenBase : baseF.length} cor={cor} />
-                                      <BarServico label="Iluminação" value={isCenarioAtivo ? ilumAtg : ilumBase} total={isCenarioAtivo ? ilumBase : baseF.length} cor={cor} />
-                                    </div>
-                                  </>
-                                );
-                              })()}
-                            </div>
-                          </>
-                        )}
+                            </>
+                          )}
+                        </div>
                       </div>
                     );
                   })()}
 
                   {/* ── Quadras ── */}
-                  {infraAtivas.includes("Quadras") && (() => {
-                    const base  = baseInfra["Quadras"];
-                    const atg   = atingidosInfra["Quadras"];
-                    const total = base?.features?.length   ?? 0;
-                    const totalAtg = atg?.features?.length ?? 0;
+                  {(() => {
+                    const s = infraStats["Quadras"];
+                    if (!s) return null;
                     return (
                       <div>
                         <h3 className="text-[11px] font-black uppercase tracking-wider pb-1 mb-2 flex items-center gap-1.5" style={{ color: INFRA_COLORS["Quadras"], borderBottom: `1px solid ${C.border}` }}>
                           <span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ backgroundColor: INFRA_COLORS["Quadras"] }} />
                           Quadras
+                          {!infraAtivas.includes("Quadras") && <span className="normal-case font-normal text-[9px] ml-auto" style={{ color: C.muted }}>oculto no mapa</span>}
                         </h3>
-                        {!base ? <div className="flex flex-col gap-2"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : (
-                          <div className="flex flex-col gap-2">
-                            <KPIRow isLoading={isLoading} titulo="Quadras" cor={INFRA_COLORS["Quadras"]} valor={compactoBr(isCenarioAtivo ? totalAtg : total, 0)} sub={isCenarioAtivo ? "Atingidas" : "Total"} delta={isCenarioAtivo ? `de ${compactoBr(total, 0)} (${calcPct(totalAtg, total)})` : undefined} />
-                          </div>
-                        )}
+                        <div className="flex flex-col gap-2">
+                          <KPIRow isLoading={isLoading} titulo="Quadras" cor={INFRA_COLORS["Quadras"]} valor={compactoBr(isCenarioAtivo ? s.atingidas : s.total, 0)} sub={isCenarioAtivo ? "Atingidas" : "Total"} delta={isCenarioAtivo ? `de ${compactoBr(s.total, 0)} (${calcPct(s.atingidas, s.total)})` : undefined} />
+                        </div>
                       </div>
                     );
                   })()}
 
                   {/* ── Terrenos ── */}
-                  {infraAtivas.includes("Terrenos") && (() => {
-                    const base  = baseInfra["Terrenos"];
-                    const atg   = atingidosInfra["Terrenos"];
-                    const baseF = base?.features   ?? [];
-                    const atgF  = atg?.features    ?? [];
-                    const total    = baseF.length;
-                    const totalAtg = atgF.length;
-                    const agua    = { b: countFlag(baseF,"agua"),       a: countFlag(atgF,"agua") };
-                    const lixo    = { b: countFlag(baseF,"coleta_lix"), a: countFlag(atgF,"coleta_lix") };
-                    const pluvial = { b: countFlag(baseF,"esgoto_plu"), a: countFlag(atgF,"esgoto_plu") };
-                    const cloacal = { b: countEquals(baseF,"esgoto_clo",["esgoto_cloacal","cloacal","1"]), a: countEquals(atgF,"esgoto_clo",["esgoto_cloacal","cloacal","1"]) };
-                    const fossa   = { b: countEquals(baseF,"esgoto_clo",["fossa_septica","fossa"]),        a: countEquals(atgF,"esgoto_clo",["fossa_septica","fossa"]) };
-                    const condo   = { b: countFlag(baseF,"condominio"), a: countFlag(atgF,"condominio") };
+                  {(() => {
+                    const s = infraStats["Terrenos"];
+                    if (!s) return null;
+                    const cor = INFRA_COLORS["Terrenos"];
+                    const pct = s.total > 0 ? Math.round((s.atingidos / s.total) * 100) : 0;
+                    const pieData = [{ name: "Atingidos", value: s.atingidos }, { name: "Não Atingidos", value: Math.max(0, s.total - s.atingidos) }];
+                    const items = [
+                      { label: "Água",           val: isCenarioAtivo ? s.agua.atingidos           : s.agua.total,           tot: isCenarioAtivo ? s.agua.total           : s.total },
+                      { label: "Coleta de Lixo", val: isCenarioAtivo ? s.lixo.atingidos           : s.lixo.total,           tot: isCenarioAtivo ? s.lixo.total           : s.total },
+                      { label: "Esgoto Pluvial", val: isCenarioAtivo ? s.esgoto_pluvial.atingidos : s.esgoto_pluvial.total, tot: isCenarioAtivo ? s.esgoto_pluvial.total : s.total },
+                      { label: "Esgoto Cloacal", val: isCenarioAtivo ? s.esgoto_cloacal.atingidos : s.esgoto_cloacal.total, tot: isCenarioAtivo ? s.esgoto_cloacal.total : s.total },
+                      { label: "Fossa Séptica",  val: isCenarioAtivo ? s.fossa.atingidos          : s.fossa.total,          tot: isCenarioAtivo ? s.fossa.total          : s.total },
+                      { label: "Condomínios",    val: isCenarioAtivo ? s.condominio.atingidos     : s.condominio.total,     tot: isCenarioAtivo ? s.condominio.total     : s.total },
+                    ];
                     return (
                       <div>
-                        <h3 className="text-[11px] font-black uppercase tracking-wider pb-1 mb-2 flex items-center gap-1.5" style={{ color: INFRA_COLORS["Terrenos"], borderBottom: `1px solid ${C.border}` }}>
-                          <span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ backgroundColor: INFRA_COLORS["Terrenos"] }} />
+                        <h3 className="text-[11px] font-black uppercase tracking-wider pb-1 mb-2 flex items-center gap-1.5" style={{ color: cor, borderBottom: `1px solid ${C.border}` }}>
+                          <span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ backgroundColor: cor }} />
                           Terrenos
+                          {!infraAtivas.includes("Terrenos") && <span className="normal-case font-normal text-[9px] ml-auto" style={{ color: C.muted }}>oculto no mapa</span>}
                         </h3>
-                        {!base ? <div className="flex flex-col gap-2"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : (
+                        <div className="flex flex-col gap-2">
+                          {isCenarioAtivo && s.total > 0 && (
+                            <div className="relative flex items-center justify-center">
+                              <ResponsiveContainer width="100%" height={130}>
+                                <PieChart>
+                                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={38} outerRadius={58} paddingAngle={2} dataKey="value" stroke="none">
+                                    <Cell fill={cor} /><Cell fill={`${cor}25`} />
+                                  </Pie>
+                                  <Tooltip formatter={(v: any) => [compactoBr(v, 0), ""]} contentStyle={{ fontSize: 11, borderRadius: 8, border: `1px solid ${C.border}`, padding: "4px 10px" }} itemStyle={{ color: C.primary }} />
+                                </PieChart>
+                              </ResponsiveContainer>
+                              <div className="absolute flex flex-col items-center pointer-events-none">
+                                <span className="text-lg font-black leading-none" style={{ color: cor }}>{compactoBr(s.atingidos, 0)}</span>
+                                <span className="text-[9px] font-medium" style={{ color: C.muted }}>{pct}% atingidos</span>
+                                <span className="text-[9px]" style={{ color: C.muted }}>de {compactoBr(s.total, 0)}</span>
+                              </div>
+                            </div>
+                          )}
+                          <h3 className="text-[10px] font-bold uppercase tracking-wider pt-2 pb-1 border-t" style={{ color: cor, borderColor: C.border }}>
+                            Cobertura de Serviços <span className="normal-case font-normal text-[9px]" style={{ color: C.muted }}>— de {compactoBr(s.total,0)} terrenos</span>
+                          </h3>
                           <div className="flex flex-col gap-2">
-                            {isCenarioAtivo && total > 0 && (() => {
-                              const cor = INFRA_COLORS["Terrenos"];
-                              const pct = Math.round((totalAtg / total) * 100);
-                              const pieData = [{ name: "Atingidos", value: totalAtg }, { name: "Não Atingidos", value: Math.max(0, total - totalAtg) }];
-                              return (
-                                <div className="relative flex items-center justify-center">
-                                  <ResponsiveContainer width="100%" height={130}>
-                                    <PieChart>
-                                      <Pie data={pieData} cx="50%" cy="50%" innerRadius={38} outerRadius={58} paddingAngle={2} dataKey="value" stroke="none">
-                                        <Cell fill={cor} /><Cell fill={`${cor}25`} />
-                                      </Pie>
-                                      <Tooltip formatter={(v: any) => [compactoBr(v, 0), ""]} contentStyle={{ fontSize: 11, borderRadius: 8, border: `1px solid ${C.border}`, padding: "4px 10px" }} itemStyle={{ color: C.primary }} />
-                                    </PieChart>
-                                  </ResponsiveContainer>
-                                  <div className="absolute flex flex-col items-center pointer-events-none">
-                                    <span className="text-lg font-black leading-none" style={{ color: cor }}>{compactoBr(totalAtg, 0)}</span>
-                                    <span className="text-[9px] font-medium" style={{ color: C.muted }}>{pct}% atingidos</span>
-                                    <span className="text-[9px]" style={{ color: C.muted }}>de {compactoBr(total, 0)}</span>
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                            <h3 className="text-[10px] font-bold uppercase tracking-wider pt-2 pb-1 border-t" style={{ color: INFRA_COLORS["Terrenos"], borderColor: C.border }}>
-                              Cobertura de Serviços <span className="normal-case font-normal text-[9px]" style={{ color: C.muted }}>— de {compactoBr(total,0)} terrenos</span>
-                            </h3>
-                            {(() => {
-                              const cor = INFRA_COLORS["Terrenos"];
-                              const items = [
-                                { label: "Água",           val: isCenarioAtivo ? agua.a    : agua.b,    tot: isCenarioAtivo ? agua.b    : total },
-                                { label: "Coleta de Lixo", val: isCenarioAtivo ? lixo.a    : lixo.b,    tot: isCenarioAtivo ? lixo.b    : total },
-                                { label: "Esgoto Pluvial", val: isCenarioAtivo ? pluvial.a : pluvial.b, tot: isCenarioAtivo ? pluvial.b : total },
-                                { label: "Esgoto Cloacal", val: isCenarioAtivo ? cloacal.a : cloacal.b, tot: isCenarioAtivo ? cloacal.b : total },
-                                { label: "Fossa Séptica",  val: isCenarioAtivo ? fossa.a   : fossa.b,   tot: isCenarioAtivo ? fossa.b   : total },
-                                { label: "Condomínios",    val: isCenarioAtivo ? condo.a   : condo.b,   tot: isCenarioAtivo ? condo.b   : total },
-                              ];
-                              return (
-                                <div className="flex flex-col gap-2">
-                                  {items.map(({ label, val, tot }) => <BarServico key={label} label={label} value={val} total={tot} cor={cor} />)}
-                                </div>
-                              );
-                            })()}
+                            {items.map(({ label, val, tot }) => <BarServico key={label} label={label} value={val} total={tot} cor={cor} />)}
                           </div>
-                        )}
+                        </div>
                       </div>
                     );
                   })()}
 
-                  {/* ── Outras camadas (Prédios Públicos, Segurança) ── */}
-                  {infraAtivas.filter(n => !["Logradouros","Quadras","Terrenos"].includes(n)).map(infraNome => {
-                    const base     = baseInfra[infraNome];
-                    const atg      = atingidosInfra[infraNome];
-                    const totalBase = base?.features?.length ?? 0;
-                    const totalAtg  = atg?.features?.length  ?? 0;
-                    const titulo = infraNome === "Prédios Públicos" ? "Prédios Públicos" : "Equip. Segurança";
-                    const cor = INFRA_COLORS[infraNome] ?? COLORS.infra;
-                    return (
-                      <div key={infraNome}>
-                        <h3 className="text-[11px] font-black uppercase tracking-wider pb-1 mb-2 flex items-center gap-1.5" style={{ color: cor, borderBottom: `1px solid ${C.border}` }}>
-                          <span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ backgroundColor: cor }} />
-                          {infraNome}
-                        </h3>
-                        {!base ? <div className="flex flex-col gap-2"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : (
-                          <div className="flex flex-col gap-2">
-                            <KPIRow isLoading={isLoading} titulo={titulo} cor={cor} valor={compactoBr(isCenarioAtivo ? totalAtg : totalBase, 0)} sub={isCenarioAtivo ? "Atingidos" : "Total"} delta={isCenarioAtivo ? `de ${compactoBr(totalBase, 0)} (${calcPct(totalAtg, totalBase)})` : undefined} />
-                            {isCenarioAtivo && totalBase > 0 && (() => {
-                              const pct = Math.round((totalAtg / totalBase) * 100);
-                              const pieData = [{ name: "Atingidos", value: totalAtg }, { name: "Não Atingidos", value: Math.max(0, totalBase - totalAtg) }];
-                              return (
-                                <div className="relative flex items-center justify-center">
-                                  <ResponsiveContainer width="100%" height={130}>
-                                    <PieChart>
-                                      <Pie data={pieData} cx="50%" cy="50%" innerRadius={38} outerRadius={58} paddingAngle={2} dataKey="value" stroke="none">
-                                        <Cell fill={cor} /><Cell fill={`${cor}25`} />
-                                      </Pie>
-                                      <Tooltip formatter={(v: any) => [compactoBr(v, 0), ""]} contentStyle={{ fontSize: 11, borderRadius: 8, border: `1px solid ${C.border}`, padding: "4px 10px" }} itemStyle={{ color: C.primary }} />
-                                    </PieChart>
-                                  </ResponsiveContainer>
-                                  <div className="absolute flex flex-col items-center pointer-events-none">
-                                    <span className="text-lg font-black leading-none" style={{ color: cor }}>{compactoBr(totalAtg, 0)}</span>
-                                    <span className="text-[9px] font-medium" style={{ color: C.muted }}>{pct}% atingidos</span>
-                                    <span className="text-[9px]" style={{ color: C.muted }}>de {compactoBr(totalBase, 0)}</span>
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
                 </div>
+                )}
                 <p className="text-[9px] italic mt-3 pt-2 border-t" style={{ color: C.muted, borderColor: C.border }}>Fonte: Prefeitura Municipal de Rio Grande</p>
               </TabsContent>
             )}
