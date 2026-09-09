@@ -1,5 +1,16 @@
 {
   "Rio Grande": {
+    "Cenário Setembro 2023": {
+      "dias_agudo": 15,
+      "dias_efetivos": 30,
+      "f_interrup": 0.082192,
+      "empresas_vab": 9653663.08,
+      "educacao_perdas": 1345331.94,
+      "educacao_custo_adicional": 1345331.94,
+      "saude_producao": 0.0,
+      "agricultura_perdas": 9.5,
+      "total": 12344336.45
+    },
     "Cenário Maio 2024": {
       "dias_agudo": 30,
       "dias_efetivos": 60,
@@ -21,17 +32,6 @@
       "saude_producao": 9850834.15,
       "agricultura_perdas": 63390.0,
       "total": 543998659.52
-    },
-    "Cenário Setembro 2023": {
-      "dias_agudo": 15,
-      "dias_efetivos": 30,
-      "f_interrup": 0.082192,
-      "empresas_vab": 10001754.11,
-      "educacao_perdas": 1345331.94,
-      "educacao_custo_adicional": 1345331.94,
-      "saude_producao": 0.0,
-      "agricultura_perdas": 0.0,
-      "total": 12692417.99
     },
     "Nível da Lagoa + Chuva Acumulada – 16/05/2024": {
       "dias_agudo": 30,

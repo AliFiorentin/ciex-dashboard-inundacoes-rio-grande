@@ -77,11 +77,16 @@ const C = {
   muted:     "#6b7a69",
 };
 
+// Ordem cronológica do evento (Setembro 2023 é anterior a Maio 2024).
 const CENARIOS = [
+  "Cenário Setembro 2023",
   "Cenário Maio 2024",
   "Cenário Maio 2024 + 50%",
   "Nível da Lagoa + Chuva Acumulada – 16/05/2024",
 ];
+// Cenário inicial ao carregar sem permalink — independente da posição no
+// array acima, para a ordem de exibição não mudar o comportamento padrão.
+const DEFAULT_CENARIO = "Cenário Maio 2024";
 
 // Códigos curtos e legíveis para a URL (?cenario=<código>) — independentes do
 // slug interno usado nos nomes de arquivo (scenarioSlug/slugify), para não
@@ -90,6 +95,7 @@ const CENARIOS = [
 const CENARIO_URL_SLUGS: Record<string, string> = {
   "Cenário Maio 2024":                             "maio-2024",
   "Cenário Maio 2024 + 50%":                        "maio-2024-mais-50",
+  "Cenário Setembro 2023":                          "setembro-2023",
   "Nível da Lagoa + Chuva Acumulada – 16/05/2024": "lagoa-chuva-16-05-2024",
 };
 const cenarioParaUrl = (nome: string) => CENARIO_URL_SLUGS[nome] ?? slugify(nome);
@@ -375,7 +381,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
     permalinkCenarioRef.current = null;
     // `desired` é o código amigável da URL (CENARIO_URL_SLUGS) — ver o efeito
     // que escreve `?cenario=`, mais abaixo.
-    const initialCenario = (desired && urlParaCenario(desired)) || CENARIOS[0];
+    const initialCenario = (desired && urlParaCenario(desired)) || DEFAULT_CENARIO;
     const sSlug = scenarioSlug(initialCenario);
     const defaultInfra = ["Logradouros", "Terrenos"]; // deve bater com infraAtivas inicial
 
