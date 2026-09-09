@@ -43,7 +43,7 @@ A aplicação é um dashboard de página única construído com **Next.js + Type
 | **Uso e Cobertura da Terra** | MapaBiomas Coleção 10 (2024) | Classes: Silvicultura, Campo Alagado, Formação Campestre, Mosaico de Usos, Restinga Arbórea, Restinga Herbácea |
 | **Agricultura** | MapaBiomas Coleção 10 (2024) | Culturas: Soja, Arroz, Outras Lavouras Temporárias |
 | **População** | WorldPop | Grade populacional (hab./pixel) renderizada como heatmap raster; população total e atingida por cenário pré-computadas |
-| **Cenários de inundação** | Modelagem hidrológica | Manchas de inundação vetoriais do evento de Maio de 2024 e cenário expandido (+50%) |
+| **Cenários de inundação** | Modelagem hidrológica | Manchas de inundação vetoriais dos eventos de Setembro de 2023, Maio de 2024 e cenário expandido (+50%) |
 | **Mancha de altura da lâmina d'água** | Simulação hidrológica por bacias — plataforma Economia Azul (GPEA/FURG) | Nível da Lagoa (16/05/2024, 20h) + Chuva Acumulada (60,8mm) combinados: rasters de profundidade por bacia hidrográfica, estilizados por rampa de cor QGIS (`.qml`) |
 
 ---
