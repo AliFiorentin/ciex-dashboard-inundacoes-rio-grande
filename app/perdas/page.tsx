@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { readFileSync } from "fs";
-import { join } from "path";
 import { PerdasClient } from "./PerdasClient";
-import type { PerdasData } from "./PerdasClient";
+import { getPerdasData } from "./get-data";
 
 export const metadata: Metadata = {
   title: "Perdas Operacionais — Rio Grande (RS)",
@@ -10,11 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function PerdasPage() {
-  let dados: PerdasData = {};
-  try {
-    const p = join(process.cwd(), "public", "dados_convertidos", "perdas_operacionais.json");
-    dados = JSON.parse(readFileSync(p, "utf8"));
-  } catch { /* graceful degradation */ }
-
-  return <PerdasClient dados={dados} />;
+  return <PerdasClient dados={getPerdasData()} />;
 }
