@@ -64,7 +64,6 @@ export function DonutChart({
           fill="none"
           stroke="var(--border)"
           strokeWidth={strokeWidth}
-          opacity={0.35}
         />
         {segments.map((seg, i) => (
           <motion.circle

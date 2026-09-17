@@ -234,6 +234,30 @@ const normalizeDep = (val: string) => DEP_LABELS[val] || val;
 // Remove prefixo numérico de classificação (ex.: "6- Arquitetura Civil Privada" → "Arquitetura Civil Privada")
 const normalizeTipologia = (val: string) => val.replace(/^\d+-\s*/, "").trim();
 
+// Seções CNAE 2.0 — a fonte (RAIS) vem em caixa alta e sem acentos; mapeamos para o rótulo correto em pt-BR
+const SETOR_LABELS: Record<string, string> = {
+  "ADMINISTRACAO PUBLICA, DEFESA E SEGURIDADE SOCIAL":              "Administração Pública, Defesa e Seguridade Social",
+  "AGRICULTURA, PECUARIA, PRODUCAO FLORESTAL, PESCA E AQUICULTURA": "Agricultura, Pecuária, Produção Florestal, Pesca e Aquicultura",
+  "AGUA, ESGOTO, GESTAO DE RESIDUOS E DESCONTAMINACAO":             "Água, Esgoto, Gestão de Resíduos e Descontaminação",
+  "ALOJAMENTO E ALIMENTACAO":                                       "Alojamento e Alimentação",
+  "ARTES, CULTURA, ESPORTE E RECREACAO":                            "Artes, Cultura, Esporte e Recreação",
+  "ATIVIDADES ADMINISTRATIVAS E SERVICOS COMPLEMENTARES":           "Atividades Administrativas e Serviços Complementares",
+  "ATIVIDADES FINANCEIRAS E SEGUROS":                               "Atividades Financeiras e Seguros",
+  "ATIVIDADES IMOBILIARIAS":                                        "Atividades Imobiliárias",
+  "ATIVIDADES PROFISSIONAIS, CIENTIFICAS E TECNICAS":               "Atividades Profissionais, Científicas e Técnicas",
+  "COMERCIO; REPARACAO DE VEICULOS":                                "Comércio; Reparação de Veículos",
+  "CONSTRUCAO":                                                     "Construção",
+  "EDUCACAO":                                                       "Educação",
+  "ELETRICIDADE E GAS":                                             "Eletricidade e Gás",
+  "INDUSTRIAS DE TRANSFORMACAO":                                    "Indústrias de Transformação",
+  "INDUSTRIAS EXTRATIVAS":                                          "Indústrias Extrativas",
+  "INFORMACAO E COMUNICACAO":                                       "Informação e Comunicação",
+  "OUTRAS ATIVIDADES DE SERVICOS":                                  "Outras Atividades de Serviços",
+  "SAUDE HUMANA E SERVICOS SOCIAIS":                                "Saúde Humana e Serviços Sociais",
+  "TRANSPORTE, ARMAZENAGEM E CORREIO":                              "Transporte, Armazenagem e Correio",
+};
+const normalizeSetor = (val: string) => SETOR_LABELS[val] || val;
+
 const formatoBr = (num: number, casas = 0) =>
   num.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
 
@@ -912,7 +936,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
     if (source === "empresas") return (
       <div className="flex flex-col gap-1.5 p-3 w-56 bg-white rounded-xl shadow-lg border border-slate-100">
         <strong className="text-blue-700 uppercase tracking-wider text-[10px] border-b border-slate-100 pb-1">🏢 Empresa</strong>
-        <span className="font-bold text-xs text-slate-800 leading-tight">{p.CNAE_2 || "Sem Setor"}</span>
+        <span className="font-bold text-xs text-slate-800 leading-tight">{p.CNAE_2 ? normalizeSetor(p.CNAE_2) : "Sem Setor"}</span>
         <div className="grid grid-cols-2 gap-2 mt-1">
           <div className="bg-slate-50 p-1.5 rounded border border-slate-100">
             <span className="block text-[9px] text-slate-500 uppercase font-bold">Empregados</span>
@@ -1553,7 +1577,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 <SelectTrigger className="h-6 border-blue-200/60 bg-blue-50/50 text-[10px] w-full [&>span]:truncate"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="(todos)">(todos)</SelectItem>
-                  {setoresUnicos.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {setoresUnicos.map(s => <SelectItem key={s} value={s}>{normalizeSetor(s)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -1592,22 +1616,6 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                   {tipologiasUnicas.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </div>
-          )}
-          {camadas.includes("Infraestrutura") && infraAtivas.length > 0 && (
-            <div className="flex flex-col gap-0.5 w-full overflow-hidden shrink-0">
-              <label className="text-[8px] font-bold text-orange-700 uppercase tracking-wider">Infraestrutura</label>
-              <DropdownMenu>
-                <DropdownMenuTrigger className="h-6 border-orange-200/60 bg-orange-50/50 text-[10px] w-full flex justify-between items-center px-2 rounded transition-colors">
-                  <span className="truncate">{infraAtivas.length} selecionada(s)</span>
-                  <span className="text-[8px] opacity-70">▼</span>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-36" align="end">
-                  {infraAtivas.map(nome => (
-                    <DropdownMenuCheckboxItem key={nome} checked onCheckedChange={() => toggleInfra(nome)} className="text-[10px] hover:bg-slate-100">{nome}</DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           )}
           {isCenarioAtivo && (
@@ -1753,8 +1761,8 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
               ))}
             </div>
 
-            {/* KPI fixo de população — largura total, abaixo das abas (sempre visível quando há dados, independe de camadas/heatmap) */}
-            {popData?.["Rio Grande"] && (() => {
+            {/* KPI de população — exibido apenas na aba Resumo */}
+            {tabAtiva === "resumo" && popData?.["Rio Grande"] && (() => {
               const cenSlug = cenario.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
               const popCen = cenario !== "(nenhum)" ? popData["Rio Grande"].cenarios?.[cenSlug] : null;
               return (
@@ -1807,7 +1815,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             })()}
 
             {/* Resumo */}
-            <TabsContent value="resumo" className="flex-1 overflow-y-auto mt-4 pr-2 pb-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full">
+            <TabsContent value="resumo" className="flex-1 overflow-y-auto mt-0 pr-2 pb-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full">
               {(() => {
                 const staffBase    = Object.values(metricasSau.base.staff).reduce((a, b) => a + (b as number), 0);
                 const staffImpacto = Object.values(metricasSau.impacto.staff).reduce((a, b) => a + (b as number), 0);
@@ -1823,7 +1831,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                   { icon: <HeartPulse size={15} strokeWidth={2.5} />,  cor: COLORS.saude,     titulo: "Unidades de Saúde", valor: isCenarioAtivo ? metricasSau.impacto.unidades : metricasSau.base.unidades, base: metricasSau.base.unidades },
                   { icon: <Stethoscope size={15} strokeWidth={2.5} />, cor: COLORS.saude,     titulo: "Profissionais Saúde", valor: isCenarioAtivo ? staffImpacto : staffBase, base: staffBase },
                   ...(metricasPatrimonio.base.total > 0 ? [{ icon: <Landmark size={15} strokeWidth={2.5} />, cor: COLORS.patrimonio, titulo: "Patrimônio Histórico", valor: isCenarioAtivo ? metricasPatrimonio.impacto.total : metricasPatrimonio.base.total, base: metricasPatrimonio.base.total }] : []),
-                  ...(infraLog ? [{ icon: <Route size={15} strokeWidth={2.5} />, cor: INFRA_COLORS["Logradouros"], titulo: "Segmentos de Via", valor: isCenarioAtivo ? infraLog.segmentos_atingidos : infraLog.segmentos_total, base: infraLog.segmentos_total }] : []),
+                  ...(infraLog ? [{ icon: <Route size={15} strokeWidth={2.5} />, cor: INFRA_COLORS["Logradouros"], titulo: "Ruas", valor: isCenarioAtivo ? infraLog.ruas_atingidas : infraLog.ruas_total, base: infraLog.ruas_total }] : []),
                 ];
 
                 return (
@@ -1877,8 +1885,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 const total = setoresChart.reduce((s, [, c]) => s + (c as number), 0);
                 const pieData = setoresChart.map(([name, value]) => ({ name, value }));
                 return (
-                  <>
-                    <h3 className="text-[11px] font-black uppercase tracking-wider mb-1 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Empresas</h3>
+                  <ChartCard titulo="Empresas por Setor">
                     <div className="flex items-center justify-center py-1">
                       <DonutChart
                         size={152} strokeWidth={26} cssSize={PANEL_FLUID.donutCss}
@@ -1894,23 +1901,23 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                         }
                       />
                     </div>
-                    <div className="flex flex-col gap-0.5 mb-3">
+                    <div className="flex flex-col gap-0.5">
                       {setoresChart.map(([setor, count], i) => (
                         <div key={setor}
                           className="flex items-center gap-2 rounded-md px-1 py-0.5 cursor-pointer transition-colors"
                           style={{ backgroundColor: filtroSetor === setor ? `${DONUT_COLORS[i % DONUT_COLORS.length]}22` : "transparent", outline: filtroSetor === setor ? `1px solid ${DONUT_COLORS[i % DONUT_COLORS.length]}55` : "none" }}
                           onClick={() => setFiltroSetor(filtroSetor === setor ? "(todos)" : setor)}
-                          title={filtroSetor === setor ? "Clique para remover filtro" : `Filtrar por ${setor}`}
+                          title={filtroSetor === setor ? "Clique para remover filtro" : `Filtrar por ${normalizeSetor(setor)}`}
                         >
                           <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
-                          <span className="text-[9px] flex-1 truncate" style={{ color: filtroSetor === setor ? C.primary : C.muted }} title={setor}>{setor}</span>
+                          <span className="text-[9px] flex-1 truncate" style={{ color: filtroSetor === setor ? C.primary : C.muted }} title={normalizeSetor(setor)}>{normalizeSetor(setor)}</span>
                           <span className="text-[9px] font-bold tabular-nums" style={{ color: C.primary }}>{count}</span>
                           <span className="text-[9px] w-8 text-right tabular-nums" style={{ color: C.muted }}>{Math.round((count as number / total) * 100)}%</span>
                         </div>
                       ))}
                       {filtroSetor !== "(todos)" && <button className="text-[9px] font-bold mt-1.5 px-2.5 py-1 rounded-md self-start" style={{ backgroundColor: `${C.primary}15`, color: C.primary, border: `1px solid ${C.primary}35` }} onClick={() => setFiltroSetor("(todos)")}>✕ Limpar filtro</button>}
                     </div>
-                  </>
+                  </ChartCard>
                 );
               })()}
               <div className="flex flex-col gap-2 pb-2 animate-fade-in-up">
@@ -1924,9 +1931,8 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 if (setores.length === 0) return null;
                 const maxBase = empPorSetor.base[setores[0]] || 1;
                 return (
-                  <>
-                    <h3 className="text-[11px] font-black uppercase tracking-wider mt-3 mb-2 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Empregados por Setor</h3>
-                    <div className="flex flex-col gap-1.5 mb-3">
+                  <ChartCard titulo="Empregados por Setor">
+                    <div className="flex flex-col gap-1.5">
                       {setores.map((setor, i) => {
                         const baseVal = empPorSetor.base[setor] || 0;
                         const atgVal  = empPorSetor.impacto[setor] || 0;
@@ -1938,9 +1944,9 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                             className="flex items-center gap-2 rounded-lg px-1 py-0.5 cursor-pointer transition-colors"
                             style={{ backgroundColor: isSelected ? `${DONUT_COLORS[i % DONUT_COLORS.length]}18` : "transparent", outline: isSelected ? `1px solid ${DONUT_COLORS[i % DONUT_COLORS.length]}44` : "none" }}
                             onClick={() => setFiltroSetor(isSelected ? "(todos)" : setor)}
-                            title={isSelected ? "Clique para remover filtro" : `Filtrar por ${setor}`}
+                            title={isSelected ? "Clique para remover filtro" : `Filtrar por ${normalizeSetor(setor)}`}
                           >
-                            <span className="text-[9px] w-24 shrink-0 truncate" style={{ color: isSelected ? C.primary : C.muted }} title={setor}>{setor}</span>
+                            <span className="text-[9px] w-24 shrink-0 truncate" style={{ color: isSelected ? C.primary : C.muted }} title={normalizeSetor(setor)}>{normalizeSetor(setor)}</span>
                             <div className="flex-1 rounded-full h-2.5 overflow-hidden" style={{ backgroundColor: C.cardBg }}>
                               <div className="h-full rounded-full" style={{ width: `${isCenarioAtivo ? pct : Math.round((val/maxBase)*100)}%`, backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
                             </div>
@@ -1951,7 +1957,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                         );
                       })}
                     </div>
-                  </>
+                  </ChartCard>
                 );
               })()}
               <div className="flex flex-col gap-2 pb-2">
@@ -1984,38 +1990,39 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 const lista = listaFeats.map((f: any) => String(f.properties?.no_entidade ?? "").trim()).filter(Boolean).sort((a: string, b: string) => a.localeCompare(b, "pt-BR"));
                 return (
                   <>
-                    <h3 className="text-[11px] font-black uppercase tracking-wider mb-1 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Escolas</h3>
-                    <div className="flex items-center justify-center py-1">
-                      <DonutChart
-                        size={140} strokeWidth={24} cssSize={PANEL_FLUID.donutCss}
-                        data={pieData.map((d, i) => ({ value: d.value as number, color: DONUT_COLORS[i % DONUT_COLORS.length], label: d.name, opacity: filtroDep !== "(todas)" && filtroDep !== d.name ? 0.35 : 1 }))}
-                        onSegmentClick={seg => setFiltroDep(filtroDep === seg.label ? "(todas)" : seg.label)}
-                        centerContent={
-                          <div className="flex flex-col items-center">
-                            <span className="font-black leading-none" style={{ color: C.primary, fontSize: PANEL_FLUID.fontValor }}>{totalDep}</span>
-                            {isCenarioAtivo
-                              ? <><span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>{Math.round(totalDep / baseTotalDep * 100)}% escolas</span><span style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>de {baseTotalDep}</span></>
-                              : <span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>escolas</span>}
+                    <ChartCard titulo="Escolas por Dependência">
+                      <div className="flex items-center justify-center py-1">
+                        <DonutChart
+                          size={140} strokeWidth={24} cssSize={PANEL_FLUID.donutCss}
+                          data={pieData.map((d, i) => ({ value: d.value as number, color: DONUT_COLORS[i % DONUT_COLORS.length], label: d.name, opacity: filtroDep !== "(todas)" && filtroDep !== d.name ? 0.35 : 1 }))}
+                          onSegmentClick={seg => setFiltroDep(filtroDep === seg.label ? "(todas)" : seg.label)}
+                          centerContent={
+                            <div className="flex flex-col items-center">
+                              <span className="font-black leading-none" style={{ color: C.primary, fontSize: PANEL_FLUID.fontValor }}>{totalDep}</span>
+                              {isCenarioAtivo
+                                ? <><span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>{Math.round(totalDep / baseTotalDep * 100)}% escolas</span><span style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>de {baseTotalDep}</span></>
+                                : <span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>escolas</span>}
+                            </div>
+                          }
+                        />
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        {pieData.map((d, i) => (
+                          <div key={d.name}
+                            className="flex items-center gap-2 rounded-md px-1 py-0.5 cursor-pointer transition-colors"
+                            style={{ backgroundColor: filtroDep === d.name ? `${DONUT_COLORS[i % DONUT_COLORS.length]}22` : "transparent", outline: filtroDep === d.name ? `1px solid ${DONUT_COLORS[i % DONUT_COLORS.length]}55` : "none" }}
+                            onClick={() => setFiltroDep(filtroDep === d.name ? "(todas)" : d.name)}
+                            title={filtroDep === d.name ? "Clique para remover filtro" : `Filtrar por ${d.name}`}
+                          >
+                            <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+                            <span className="text-[11px] flex-1" style={{ color: filtroDep === d.name ? C.primary : C.muted }}>{d.name}</span>
+                            <span className="text-[11px] font-bold tabular-nums" style={{ color: C.primary }}>{d.value}</span>
+                            <span className="text-[11px] w-9 text-right tabular-nums" style={{ color: C.muted }}>{Math.round(d.value / totalDep * 100)}%</span>
                           </div>
-                        }
-                      />
-                    </div>
-                    <div className="flex flex-col gap-0.5 mb-2">
-                      {pieData.map((d, i) => (
-                        <div key={d.name}
-                          className="flex items-center gap-2 rounded-md px-1 py-0.5 cursor-pointer transition-colors"
-                          style={{ backgroundColor: filtroDep === d.name ? `${DONUT_COLORS[i % DONUT_COLORS.length]}22` : "transparent", outline: filtroDep === d.name ? `1px solid ${DONUT_COLORS[i % DONUT_COLORS.length]}55` : "none" }}
-                          onClick={() => setFiltroDep(filtroDep === d.name ? "(todas)" : d.name)}
-                          title={filtroDep === d.name ? "Clique para remover filtro" : `Filtrar por ${d.name}`}
-                        >
-                          <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
-                          <span className="text-[11px] flex-1" style={{ color: filtroDep === d.name ? C.primary : C.muted }}>{d.name}</span>
-                          <span className="text-[11px] font-bold tabular-nums" style={{ color: C.primary }}>{d.value}</span>
-                          <span className="text-[11px] w-9 text-right tabular-nums" style={{ color: C.muted }}>{Math.round(d.value / totalDep * 100)}%</span>
-                        </div>
-                      ))}
-                      {filtroDep !== "(todas)" && <button className="text-[9px] font-bold mt-1.5 px-2.5 py-1 rounded-md self-start" style={{ backgroundColor: `${C.primary}15`, color: C.primary, border: `1px solid ${C.primary}35` }} onClick={() => setFiltroDep("(todas)")}>✕ Limpar filtro</button>}
-                    </div>
+                        ))}
+                        {filtroDep !== "(todas)" && <button className="text-[9px] font-bold mt-1.5 px-2.5 py-1 rounded-md self-start" style={{ backgroundColor: `${C.primary}15`, color: C.primary, border: `1px solid ${C.primary}35` }} onClick={() => setFiltroDep("(todas)")}>✕ Limpar filtro</button>}
+                      </div>
+                    </ChartCard>
                     {lista.length > 0 && (
                       <div className="flex flex-col gap-1 mb-2">
                         <button onClick={() => setShowListaEscolas(p => !p)}
@@ -2047,9 +2054,8 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 if (deps.length === 0) return null;
                 const maxBase = profPorDep.base[deps[0]] || 1;
                 return (
-                  <>
-                    <h3 className="text-[11px] font-black uppercase tracking-wider mt-4 mb-2 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Professores por Dependência</h3>
-                    <div className="flex flex-col gap-1.5 pb-2">
+                  <ChartCard titulo="Professores por Dependência">
+                    <div className="flex flex-col gap-1.5">
                       {deps.map((dep, i) => {
                         const baseVal = profPorDep.base[dep] || 0;
                         const atgVal  = profPorDep.impacto[dep] || 0;
@@ -2075,7 +2081,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                       })}
                       {filtroDep !== "(todas)" && <button className="text-[9px] font-bold mt-1.5 px-2.5 py-1 rounded-md self-start" style={{ backgroundColor: `${C.primary}15`, color: C.primary, border: `1px solid ${C.primary}35` }} onClick={() => setFiltroDep("(todas)")}>✕ Limpar filtro</button>}
                     </div>
-                  </>
+                  </ChartCard>
                 );
               })()}
               {(() => {
@@ -2089,8 +2095,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 const baseAlunos = NIVEIS.reduce((s, [, key]) => s + (((metricasEdu.base as any)[key] as number) || 0), 0);
                 if (pieData.length === 0) return null;
                 return (
-                  <>
-                    <h3 className="text-[11px] font-black uppercase tracking-wider mt-4 mb-1 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Educação</h3>
+                  <ChartCard titulo="Matrículas por Nível">
                     <div className="flex items-center justify-center py-1">
                       <DonutChart
                         size={152} strokeWidth={26} cssSize={PANEL_FLUID.donutCss}
@@ -2105,7 +2110,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                         }
                       />
                     </div>
-                    <div className="flex flex-col gap-1.5 pb-2">
+                    <div className="flex flex-col gap-1.5">
                       {pieData.map((d, i) => (
                         <div key={d.name} className="flex items-center gap-2">
                           <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
@@ -2115,7 +2120,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                         </div>
                       ))}
                     </div>
-                  </>
+                  </ChartCard>
                 );
               })()}
               <p className="text-[9px] italic mt-3 pt-2 border-t" style={{ color: C.muted, borderColor: C.border }}>Fonte: IBGE — Censo Escolar</p>
@@ -2136,38 +2141,39 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 if (pieData.length === 0) return null;
                 return (
                   <>
-                    <h3 className="text-[11px] font-black uppercase tracking-wider mt-2 mb-1 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Unidades por Tipo</h3>
-                    <div className="flex items-center justify-center py-1">
-                      <DonutChart
-                        size={152} strokeWidth={26} cssSize={PANEL_FLUID.donutCss}
-                        data={pieData.map((d, i) => ({ value: d.value, color: DONUT_COLORS[i % DONUT_COLORS.length], label: d.name, opacity: filtroTipo !== "(todas)" && filtroTipo !== d.name ? 0.35 : 1 }))}
-                        onSegmentClick={seg => setFiltroTipo(filtroTipo === seg.label ? "(todas)" : seg.label)}
-                        centerContent={
-                          <div className="flex flex-col items-center">
-                            <span className="font-black leading-none" style={{ color: C.primary, fontSize: PANEL_FLUID.fontValor }}>{totalU}</span>
-                            {isCenarioAtivo
-                              ? <><span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>{Math.round(totalU / metricasSau.base.unidades * 100)}% unidades</span><span style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>de {metricasSau.base.unidades}</span></>
-                              : <span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>unidades</span>}
+                    <ChartCard titulo="Unidades por Tipo">
+                      <div className="flex items-center justify-center py-1">
+                        <DonutChart
+                          size={152} strokeWidth={26} cssSize={PANEL_FLUID.donutCss}
+                          data={pieData.map((d, i) => ({ value: d.value, color: DONUT_COLORS[i % DONUT_COLORS.length], label: d.name, opacity: filtroTipo !== "(todas)" && filtroTipo !== d.name ? 0.35 : 1 }))}
+                          onSegmentClick={seg => setFiltroTipo(filtroTipo === seg.label ? "(todas)" : seg.label)}
+                          centerContent={
+                            <div className="flex flex-col items-center">
+                              <span className="font-black leading-none" style={{ color: C.primary, fontSize: PANEL_FLUID.fontValor }}>{totalU}</span>
+                              {isCenarioAtivo
+                                ? <><span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>{Math.round(totalU / metricasSau.base.unidades * 100)}% unidades</span><span style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>de {metricasSau.base.unidades}</span></>
+                                : <span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>unidades</span>}
+                            </div>
+                          }
+                        />
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        {pieData.map((d, i) => (
+                          <div key={d.name}
+                            className="flex items-center gap-2 rounded-md px-1 py-0.5 cursor-pointer transition-colors"
+                            style={{ backgroundColor: filtroTipo === d.name ? `${DONUT_COLORS[i % DONUT_COLORS.length]}22` : "transparent", outline: filtroTipo === d.name ? `1px solid ${DONUT_COLORS[i % DONUT_COLORS.length]}55` : "none" }}
+                            onClick={() => setFiltroTipo(filtroTipo === d.name ? "(todas)" : d.name)}
+                            title={filtroTipo === d.name ? "Clique para remover filtro" : `Filtrar por ${d.name}`}
+                          >
+                            <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+                            <span className="text-[11px] flex-1 truncate" style={{ color: filtroTipo === d.name ? C.primary : C.muted }} title={d.name}>{d.name}</span>
+                            <span className="text-[11px] font-bold tabular-nums" style={{ color: C.primary }}>{d.value}</span>
+                            <span className="text-[11px] w-9 text-right tabular-nums" style={{ color: C.muted }}>{Math.round(d.value / totalU * 100)}%</span>
                           </div>
-                        }
-                      />
-                    </div>
-                    <div className="flex flex-col gap-0.5 mb-3">
-                      {pieData.map((d, i) => (
-                        <div key={d.name}
-                          className="flex items-center gap-2 rounded-md px-1 py-0.5 cursor-pointer transition-colors"
-                          style={{ backgroundColor: filtroTipo === d.name ? `${DONUT_COLORS[i % DONUT_COLORS.length]}22` : "transparent", outline: filtroTipo === d.name ? `1px solid ${DONUT_COLORS[i % DONUT_COLORS.length]}55` : "none" }}
-                          onClick={() => setFiltroTipo(filtroTipo === d.name ? "(todas)" : d.name)}
-                          title={filtroTipo === d.name ? "Clique para remover filtro" : `Filtrar por ${d.name}`}
-                        >
-                          <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
-                          <span className="text-[11px] flex-1 truncate" style={{ color: filtroTipo === d.name ? C.primary : C.muted }} title={d.name}>{d.name}</span>
-                          <span className="text-[11px] font-bold tabular-nums" style={{ color: C.primary }}>{d.value}</span>
-                          <span className="text-[11px] w-9 text-right tabular-nums" style={{ color: C.muted }}>{Math.round(d.value / totalU * 100)}%</span>
-                        </div>
-                      ))}
-                      {filtroTipo !== "(todas)" && <button className="text-[9px] font-bold mt-1.5 px-2.5 py-1 rounded-md self-start" style={{ backgroundColor: `${C.primary}15`, color: C.primary, border: `1px solid ${C.primary}35` }} onClick={() => setFiltroTipo("(todas)")}>✕ Limpar filtro</button>}
-                    </div>
+                        ))}
+                        {filtroTipo !== "(todas)" && <button className="text-[9px] font-bold mt-1.5 px-2.5 py-1 rounded-md self-start" style={{ backgroundColor: `${C.primary}15`, color: C.primary, border: `1px solid ${C.primary}35` }} onClick={() => setFiltroTipo("(todas)")}>✕ Limpar filtro</button>}
+                      </div>
+                    </ChartCard>
                     {isCenarioAtivo && (
                       <div className="flex flex-col gap-2">
                         {Object.entries(LISTAS).map(([tipoKey, cfg]) => {
@@ -2218,27 +2224,26 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                   .sort((a, b) => b.tot - a.tot);
                 const maxTot = staffData[0]?.tot || 1;
                 return (
-                  <>
-                  <h3 className="text-[11px] font-black uppercase tracking-wider mb-2 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Profissionais por Categoria</h3>
-                  <div className="flex flex-col gap-1.5 pb-2">
-                    {staffData.map((d, i) => {
-                      const pct = isCenarioAtivo ? Math.round((d.val / d.tot) * 100) : Math.round((d.val / maxTot) * 100);
-                      const barW = isCenarioAtivo ? pct : Math.round((d.val / maxTot) * 100);
-                      return (
-                        <div key={d.name} className="flex items-center gap-2">
-                          <span className="text-[9px] w-20 shrink-0 truncate" style={{ color: C.muted }} title={d.name}>{d.name}</span>
-                          <div className="flex-1 rounded-full h-2.5 overflow-hidden" style={{ backgroundColor: C.cardBg }}>
-                            <div className="h-full rounded-full" style={{ width: `${barW}%`, backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+                  <ChartCard titulo="Profissionais por Categoria">
+                    <div className="flex flex-col gap-1.5">
+                      {staffData.map((d, i) => {
+                        const pct = isCenarioAtivo ? Math.round((d.val / d.tot) * 100) : Math.round((d.val / maxTot) * 100);
+                        const barW = isCenarioAtivo ? pct : Math.round((d.val / maxTot) * 100);
+                        return (
+                          <div key={d.name} className="flex items-center gap-2">
+                            <span className="text-[9px] w-20 shrink-0 truncate" style={{ color: C.muted }} title={d.name}>{d.name}</span>
+                            <div className="flex-1 rounded-full h-2.5 overflow-hidden" style={{ backgroundColor: C.cardBg }}>
+                              <div className="h-full rounded-full" style={{ width: `${barW}%`, backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+                            </div>
+                            <span className="text-[9px] font-bold tabular-nums w-14 text-right shrink-0" style={{ color: C.primary }}>
+                              {compactoBr(d.val, 0)}{isCenarioAtivo ? ` (${pct}%)` : ""}
+                            </span>
                           </div>
-                          <span className="text-[9px] font-bold tabular-nums w-14 text-right shrink-0" style={{ color: C.primary }}>
-                            {compactoBr(d.val, 0)}{isCenarioAtivo ? ` (${pct}%)` : ""}
-                          </span>
-                        </div>
-                      );
-                    })}
-                    {isCenarioAtivo && <p className="text-[8px] mt-1" style={{ color: C.muted }}>% = atingidos / total município por categoria</p>}
-                  </div>
-                  </>
+                        );
+                      })}
+                      {isCenarioAtivo && <p className="text-[8px] mt-1" style={{ color: C.muted }}>% = atingidos / total município por categoria</p>}
+                    </div>
+                  </ChartCard>
                 );
               })()}
               <p className="text-[9px] italic mt-3 pt-2 border-t" style={{ color: C.muted, borderColor: C.border }}>Fonte: CNES — Cadastro Nacional de Estabelecimentos de Saúde</p>
@@ -2258,8 +2263,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                   const totalT = pieData.reduce((s, d) => s + d.value, 0);
                   if (pieData.length === 0) return null;
                   return (
-                    <>
-                      <h3 className="text-[11px] font-black uppercase tracking-wider mt-4 mb-1 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Por Tipologia</h3>
+                    <ChartCard titulo="Por Tipologia">
                       <div className="flex items-center justify-center py-1">
                         <DonutChart
                           size={152} strokeWidth={26} cssSize={PANEL_FLUID.donutCss}
@@ -2275,7 +2279,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                           }
                         />
                       </div>
-                      <div className="flex flex-col gap-0.5 mb-3">
+                      <div className="flex flex-col gap-0.5">
                         {pieData.map((d, i) => (
                           <div key={d.name}
                             className="flex items-center gap-2 rounded-md px-1 py-0.5 cursor-pointer transition-colors"
@@ -2291,7 +2295,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                         ))}
                         {filtroTipologia !== "(todas)" && <button className="text-[9px] font-bold mt-1.5 px-2.5 py-1 rounded-md self-start" style={{ backgroundColor: `${C.primary}15`, color: C.primary, border: `1px solid ${C.primary}35` }} onClick={() => setFiltroTipologia("(todas)")}>✕ Limpar filtro</button>}
                       </div>
-                    </>
+                    </ChartCard>
                   );
                 })()}
 
@@ -2322,8 +2326,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                       {feats.length > 0 && (() => {
                         const pieData = feats.map(({ f, ha }, i) => ({ name: f.properties?.tipo_cultura ?? `cultura-${i}`, value: ha, cor: AGRI_COLORS[f.properties?.tipo_cultura] ?? COLORS.agricultura }));
                         return (
-                          <>
-                            <h3 className="text-[11px] font-black uppercase tracking-wider mb-1 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Área por Cultura</h3>
+                          <ChartCard titulo="Área por Cultura">
                             <div className="flex items-center justify-center py-1">
                               <DonutChart
                                 size={152} strokeWidth={26} cssSize={PANEL_FLUID.donutCss}
@@ -2338,25 +2341,26 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                                 }
                               />
                             </div>
-                          </>
+                          </ChartCard>
                         );
                       })()}
-                      <h3 className="text-[11px] font-black uppercase tracking-wider mb-2 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Culturas {isCenarioAtivo ? "Atingidas" : "no Município"}</h3>
-                      <div className="flex flex-col gap-2 pb-2 animate-fade-in-up">
-                        {feats.map(({ f, ha }, i) => {
-                          const tipo    = f.properties?.tipo_cultura ?? `cultura-${i}`;
-                          const cor     = AGRI_COLORS[tipo] ?? COLORS.agricultura;
-                          const haBaseTipo = base.find(({ f: bf }) => bf.properties?.tipo_cultura === tipo)?.ha ?? 0;
-                          return (
-                            <KPIRow isLoading={isLoading} key={`agr-${tipo}-${i}`} titulo={tipo} cor={cor}
-                              valor={`${formatoBr(ha, 0)} ha`} sub="Área"
-                              delta={isCenarioAtivo && haBaseTipo > 0 ? `de ${formatoBr(haBaseTipo, 0)} ha (${formatoBr(ha / haBaseTipo * 100, 2)}%)` : undefined} />
-                          );
-                        })}
-                        {feats.length === 0 && isCenarioAtivo && (
-                          <p className="text-xs text-center py-2" style={{ color: C.muted }}>Nenhuma cultura atingida neste cenário.</p>
-                        )}
-                      </div>
+                      <ChartCard titulo={`Culturas ${isCenarioAtivo ? "Atingidas" : "no Município"}`}>
+                        <div className="flex flex-col gap-2">
+                          {feats.map(({ f, ha }, i) => {
+                            const tipo    = f.properties?.tipo_cultura ?? `cultura-${i}`;
+                            const cor     = AGRI_COLORS[tipo] ?? COLORS.agricultura;
+                            const haBaseTipo = base.find(({ f: bf }) => bf.properties?.tipo_cultura === tipo)?.ha ?? 0;
+                            return (
+                              <KPIRow isLoading={isLoading} key={`agr-${tipo}-${i}`} titulo={tipo} cor={cor}
+                                valor={`${formatoBr(ha, 0)} ha`} sub="Área"
+                                delta={isCenarioAtivo && haBaseTipo > 0 ? `de ${formatoBr(haBaseTipo, 0)} ha (${formatoBr(ha / haBaseTipo * 100, 2)}%)` : undefined} />
+                            );
+                          })}
+                          {feats.length === 0 && isCenarioAtivo && (
+                            <p className="text-xs text-center py-2" style={{ color: C.muted }}>Nenhuma cultura atingida neste cenário.</p>
+                          )}
+                        </div>
+                      </ChartCard>
                       <p className="text-[9px] italic mt-3 pt-2 border-t" style={{ color: C.muted, borderColor: C.border }}>Fonte: MapaBiomas — Coleção 10</p>
                     </>
                   );
@@ -2387,8 +2391,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                       {feats.length > 0 && (() => {
                         const pieData = feats.map(({ f, ha }, i) => ({ name: f.properties?.tipo_classe ?? `classe-${i}`, value: ha, cor: COBERTURA_COLORS[f.properties?.tipo_classe] ?? COLORS.agricultura }));
                         return (
-                          <>
-                            <h3 className="text-[11px] font-black uppercase tracking-wider mb-1 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Área por Classe</h3>
+                          <ChartCard titulo="Área por Classe">
                             <div className="flex items-center justify-center py-1">
                               <DonutChart
                                 size={152} strokeWidth={26} cssSize={PANEL_FLUID.donutCss}
@@ -2403,7 +2406,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                                 }
                               />
                             </div>
-                            <div className="flex flex-col gap-2 mt-2 mb-1">
+                            <div className="flex flex-col gap-2 mt-2">
                               {pieData.map((d) => {
                                 const haBaseClasse = base.find(({ f: bf }) => bf.properties?.tipo_classe === d.name)?.ha ?? 0;
                                 return (
@@ -2413,7 +2416,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                                 );
                               })}
                             </div>
-                          </>
+                          </ChartCard>
                         );
                       })()}
                       {feats.length === 0 && isCenarioAtivo && (
@@ -2524,12 +2527,10 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                       { label: "Condomínios",    val: isCenarioAtivo ? s.condominio.atingidos     : s.condominio.total,     tot: isCenarioAtivo ? s.condominio.total     : s.total },
                     ];
                     return (
-                      <div>
-                        <h3 className="text-[11px] font-black uppercase tracking-wider pb-1 mb-2 flex items-center gap-1.5" style={{ color: cor, borderBottom: `1px solid ${C.border}` }}>
-                          <span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ backgroundColor: cor }} />
-                          Terrenos
-                          {!infraAtivas.includes("Terrenos") && <span className="normal-case font-normal text-[9px] ml-auto" style={{ color: C.muted }}>oculto no mapa</span>}
-                        </h3>
+                      <ChartCard
+                        titulo="Terrenos"
+                        extra={!infraAtivas.includes("Terrenos") && <span className="normal-case font-normal text-[9px] text-white/70 shrink-0">oculto no mapa</span>}
+                      >
                         <div className="flex flex-col gap-2">
                           {isCenarioAtivo && s.total > 0 && (
                             <div className="flex items-center justify-center py-1">
@@ -2553,7 +2554,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                             {items.map(({ label, val, tot }) => <BarServico key={label} label={label} value={val} total={tot} cor={cor} />)}
                           </div>
                         </div>
-                      </div>
+                      </ChartCard>
                     );
                   })()}
 
@@ -2580,6 +2581,20 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
 
 // ─── Componentes auxiliares ───────────────────────────────────────────────────
 
+function ChartCard({ titulo, extra, children }: { titulo: React.ReactNode; extra?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg overflow-hidden mb-3">
+      <div className="px-3 py-1.5 flex items-center justify-between gap-2" style={{ background: BRAND_GRADIENT }}>
+        <span className="text-[10px] font-black uppercase tracking-wider text-white truncate">{titulo}</span>
+        {extra}
+      </div>
+      <div className="p-3" style={glassStyle(0.5)}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function MiniStatCard({ icon, cor, titulo, valor, sub, pct, isLoading }: {
   icon: React.ReactNode; cor: string; titulo: string; valor: string | number; sub: string; pct?: number; isLoading?: boolean;
 }) {
@@ -2605,8 +2620,8 @@ function MiniStatCard({ icon, cor, titulo, valor, sub, pct, isLoading }: {
 function KPIRow({ titulo, valor, sub, delta, cor, isLoading }: { titulo: string; valor: string | number; sub: string; delta?: string; cor?: string; isLoading?: boolean }) {
   return (
     <div className="rounded-lg overflow-hidden">
-      <div className="flex items-center gap-1.5 px-3 py-1" style={{ background: cor ? `linear-gradient(135deg, ${cor} 0%, ${C.primary} 100%)` : BRAND_GRADIENT }}>
-        {cor && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: "rgba(255,255,255,0.85)" }} />}
+      <div className="flex items-center gap-1.5 px-3 py-1" style={{ background: BRAND_GRADIENT }}>
+        {cor && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: cor }} />}
         <span className="text-[9px] font-black uppercase tracking-wider text-white truncate leading-none">{titulo}</span>
       </div>
       <div className="flex items-center justify-between gap-3 px-3 py-2" style={{ ...glassStyle(0.5), boxShadow: "none" }}>
