@@ -53,24 +53,26 @@
     --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
     --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
-    /* CIEX palette */
-    --background:          #d3d9c9;
-    --foreground:          #000000;
-    --card:                #c8cfb8;
-    --card-foreground:     #000000;
+    /* CIEX palette — alinhada aos tokens hardcoded usados em app/page.tsx (objeto `C`),
+       para que os primitivos shadcn (Select/Dropdown/Tabs/Card/Button) que consomem
+       essas variáveis renderizem com a mesma identidade visual do resto do app. */
+    --background:          #ffffff;
+    --foreground:          #0f172a;
+    --card:                #f8f9fa;
+    --card-foreground:     #0f172a;
     --popover:             #ffffff;
-    --popover-foreground:  #000000;
+    --popover-foreground:  #0f172a;
     --primary:             #1e404a;
     --primary-foreground:  #ffffff;
-    --secondary:           #b8c0a8;
+    --secondary:           #f1f5f9;
     --secondary-foreground:#1e404a;
-    --muted:               #c0c8b0;
-    --muted-foreground:    #3a5560;
+    --muted:               #f1f5f9;
+    --muted-foreground:    #6b7a69;
     --accent:              #255362;
     --accent-foreground:   #ffffff;
     --destructive:         oklch(0.577 0.245 27.325);
-    --border:              #a8b498;
-    --input:               #b0b8a0;
+    --border:              #e2e5e2;
+    --input:               #e2e5e2;
     --ring:                #1e404a;
     --chart-1:             #1e404a;
     --chart-2:             #255362;

@@ -7,17 +7,19 @@ import * as XLSX from "xlsx";
 import * as turf from "@turf/turf";
 import Image from "next/image";
 import * as flatgeobuf from "flatgeobuf";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import Link from "next/link";
 
 import {
   Building2, GraduationCap, HeartPulse, Wrench, Leaf, Sprout, Landmark, Users, Layers,
-  Download, Printer, EyeOff, SlidersHorizontal, PanelLeft, PanelRightClose, TrendingDown, Info,
+  Download, Printer, EyeOff, SlidersHorizontal, PanelLeft, PanelRightClose, TrendingDown, Info, BookOpen,
+  LayoutGrid, Wallet, Stethoscope, Route,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DonutChart } from "@/components/ui/donut-chart";
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -76,6 +78,46 @@ const C = {
   border:    "#e2e5e2",
   muted:     "#6b7a69",
 };
+
+// Gradiente de marca CIEX (135°) — usado em cabeçalhos de card, header e painéis
+const BRAND_GRADIENT = `linear-gradient(135deg, ${C.primary} 0%, ${C.field} 100%)`;
+
+// Efeito "glass" (glassmorphism) — paleta CIEX preservada via tinte na cor de fundo.
+// `tint` opcional: cor de marca aplicada como fundo translúcido (ex.: header sobre o mapa).
+const glassStyle = (opacity = 0.55, tint?: string) => ({
+  backgroundColor: tint ? `${tint}${Math.round(opacity * 255).toString(16).padStart(2, "0")}` : `rgba(255,255,255,${opacity})`,
+  backdropFilter: "saturate(180%) blur(20px)",
+  WebkitBackdropFilter: "saturate(180%) blur(20px)",
+  border: tint ? `0.5px solid rgba(255,255,255,0.18)` : "0.5px solid rgba(255,255,255,0.6)",
+  boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
+} as const);
+
+// Tipografia fluida do header (clamp: min, vw, max) — evita quebra em notebooks pequenos
+const HEADER_FLUID = {
+  logoH:              "clamp(20px, 1.8vw, 28px)",
+  logoHSecondary:     "clamp(17px, 1.55vw, 24px)",
+  titleSize:          "clamp(11px, 1.05vw, 15px)",
+  subtitleSize:       "clamp(7px, 0.65vw, 9px)",
+  selectLabelSize:    "clamp(7px, 0.65vw, 9px)",
+  selectTriggerSize:  "clamp(9px, 0.85vw, 11px)",
+};
+
+// Tipografia fluida dos cards do painel de análise (clamp: min, vh, max) — o painel rola verticalmente
+const PANEL_FLUID = {
+  donutCss:     "clamp(120px, 19vh, 170px)",
+  donutStroke:  22,
+  fontValor:    "clamp(16px, 2.4vh, 24px)",
+  fontLabel:    "clamp(8px, 1.05vh, 10px)",
+};
+
+// Header em glass tintado com a marca CIEX (gradiente translúcido + blur do mapa por trás)
+const HEADER_GLASS = {
+  backgroundImage: "linear-gradient(135deg, rgba(30,64,74,0.82) 0%, rgba(37,83,98,0.82) 100%)",
+  backdropFilter: "saturate(180%) blur(20px)",
+  WebkitBackdropFilter: "saturate(180%) blur(20px)",
+  border: "0.5px solid rgba(255,255,255,0.18)",
+  boxShadow: "0 4px 24px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.08)",
+} as const;
 
 // Ordem cronológica do evento (Setembro 2023 é anterior a Maio 2024).
 const CENARIOS = [
@@ -314,7 +356,7 @@ export default function Dashboard() {
 
   const [camadas,     setCamadas]     = useState<string[]>(["Empresas", "Saúde", "Educação", "Agricultura", "Uso e Cobertura da Terra", "Infraestrutura", "Patrimônio Histórico"]);
   const [infraAtivas, setInfraAtivas] = useState<string[]>(["Logradouros", "Terrenos"]);
-  const [tabAtiva,    setTabAtiva]    = useState("empresas");
+  const [tabAtiva,    setTabAtiva]    = useState("resumo");
   const [mapReady, setMapReady] = useState(false);
   const [showHeatmapPopulacao, setShowHeatmapPopulacao] = useState(false);
   const [showHeatmapEmpresas,  setShowHeatmapEmpresas]  = useState(false);
@@ -1286,6 +1328,15 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             <Layer id="patrimonio-point"   type="circle" filter={["!",["has","point_count"]]} layout={{ visibility: (camadas.includes("Patrimônio Histórico") && !!renderPatrimonio?.features) ? "visible" : "none" }} paint={{ "circle-color": COLORS.patrimonio, "circle-radius": 5, "circle-stroke-width": 1.5, "circle-stroke-color": "#fff" }} />
           </Source>
         </Map>
+
+        {/* Logo CIEX + GPEA — chip ao lado (à esquerda) do grupo de zoom do NavigationControl, centralizado verticalmente com ele */}
+        <div className="absolute bottom-[54px] right-[48px] z-10 pointer-events-none print:hidden">
+          <div className="flex flex-col items-center justify-center gap-1 w-[70px] rounded-lg bg-white/95 shadow-md px-1.5 py-2" style={{ border: "2px solid rgba(0,0,0,0.1)" }}>
+            <Image src="/CIEX2.png" alt="CIEX" width={62} height={62} className="object-contain" onError={e => (e.currentTarget.style.display = "none")} />
+            <div className="w-full h-px bg-black/10" />
+            <Image src="/GPEA.png" alt="GPEA" width={62} height={20} className="object-contain" onError={e => (e.currentTarget.style.display = "none")} />
+          </div>
+        </div>
       </div>
 
       {/* ── Loading ──────────────────────────────────────────────────── */}
@@ -1301,59 +1352,66 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
         </div>
       )}
 
-      {/* ── Legenda ──────────────────────────────────────────────────── */}
-      <div className={`absolute bottom-4 rounded-xl shadow-lg z-10 print:hidden transition-[left] duration-300 ${showPainelAnalise ? "left-[370px]" : "left-4"}`} style={{ backgroundColor: "#fff", border: `1px solid ${C.border}`, transitionTimingFunction: "var(--ease-out)" }}>
-        <button
-          onClick={() => setShowLegenda(p => !p)}
-          className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-xl"
-          style={{ color: C.muted }}
-        >
-          <span className="text-[8px] font-black uppercase tracking-wider">Legenda</span>
-          <span style={{ fontSize: 7 }}>{showLegenda ? "▼" : "▲"}</span>
-        </button>
-        {showLegenda && (
-          <div className="flex flex-col gap-1 px-2 pb-2">
-            {camadas.includes("Empresas") && renderEmp?.features  && <LegendItem cor={COLORS.empresas} label="Empresas" />}
-            {camadas.includes("Saúde")    && renderSau?.features  && <LegendItem cor={COLORS.saude}    label="Saúde" />}
-            {camadas.includes("Educação") && renderEdu?.features  && <LegendItem cor={COLORS.educacao} label="Educação" />}
-            {camadas.includes("Patrimônio Histórico") && renderPatrimonio?.features && <LegendItem cor={COLORS.patrimonio} label="Patrimônio Histórico" />}
-            {camadas.includes("Infraestrutura") && infraAtivas.map(nome => (
-              <LegendItem key={`infra-${nome}`} cor={INFRA_COLORS[nome] ?? COLORS.infra} label={nome} area={["Quadras","Terrenos"].includes(nome)} />
-            ))}
-            {camadas.includes("Agricultura") && showAgricultura?.features && (
-              Object.entries(AGRI_COLORS).map(([tipo, cor]) => (
-                <LegendItem key={`agr-${tipo}`} cor={cor} label={tipo} area />
-              ))
-            )}
-            {camadas.includes("Uso e Cobertura da Terra") && showCobertura?.features && (
-              Object.entries(COBERTURA_COLORS).map(([tipo, cor]) => (
-                <LegendItem key={`cob-${tipo}`} cor={cor} label={tipo} area />
-              ))
-            )}
-            {showHeatmapPopulacao && popData?.["Rio Grande"] && (
-              <div className="flex items-center gap-2 mt-1">
-                <div className="w-16 h-3 rounded-sm shrink-0" style={{ background: "linear-gradient(to right, #0d0887, #9c179e, #ed7953, #f0f921)" }} />
-                <div className="flex flex-col leading-none gap-0.5">
-                  <span className="text-[10px] font-medium" style={{ color: C.primary }}>Pop. (hab./pixel)</span>
-                  <span className="text-[8px]" style={{ color: C.muted }}>baixo → alto</span>
+      {/* ── Legenda + Copyright (lado a lado, alinhados pela base) ──────── */}
+      <div className={`absolute bottom-4 z-10 flex items-end gap-2 print:hidden transition-[left] duration-300 ${showPainelAnalise ? "left-[420px]" : "left-4"}`} style={{ transitionTimingFunction: "var(--ease-out)" }}>
+        <div className="rounded-xl overflow-hidden" style={glassStyle(0.55)}>
+          <button
+            onClick={() => setShowLegenda(p => !p)}
+            className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5"
+            style={{ background: BRAND_GRADIENT }}
+          >
+            <span className="text-[8px] font-black uppercase tracking-wider text-white">Legenda</span>
+            <span className="text-white/80" style={{ fontSize: 7 }}>{showLegenda ? "▼" : "▲"}</span>
+          </button>
+          {showLegenda && (
+            <div className="flex flex-col gap-1 px-2 pt-1.5 pb-2">
+              {camadas.includes("Empresas") && renderEmp?.features  && <LegendItem cor={COLORS.empresas} label="Empresas" />}
+              {camadas.includes("Saúde")    && renderSau?.features  && <LegendItem cor={COLORS.saude}    label="Saúde" />}
+              {camadas.includes("Educação") && renderEdu?.features  && <LegendItem cor={COLORS.educacao} label="Educação" />}
+              {camadas.includes("Patrimônio Histórico") && renderPatrimonio?.features && <LegendItem cor={COLORS.patrimonio} label="Patrimônio Histórico" />}
+              {camadas.includes("Infraestrutura") && infraAtivas.map(nome => (
+                <LegendItem key={`infra-${nome}`} cor={INFRA_COLORS[nome] ?? COLORS.infra} label={nome} area={["Quadras","Terrenos"].includes(nome)} />
+              ))}
+              {camadas.includes("Agricultura") && showAgricultura?.features && (
+                Object.entries(AGRI_COLORS).map(([tipo, cor]) => (
+                  <LegendItem key={`agr-${tipo}`} cor={cor} label={tipo} area />
+                ))
+              )}
+              {camadas.includes("Uso e Cobertura da Terra") && showCobertura?.features && (
+                Object.entries(COBERTURA_COLORS).map(([tipo, cor]) => (
+                  <LegendItem key={`cob-${tipo}`} cor={cor} label={tipo} area />
+                ))
+              )}
+              {showHeatmapPopulacao && popData?.["Rio Grande"] && (
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="w-16 h-3 rounded-sm shrink-0" style={{ background: "linear-gradient(to right, #0d0887, #9c179e, #ed7953, #f0f921)" }} />
+                  <div className="flex flex-col leading-none gap-0.5">
+                    <span className="text-[10px] font-medium" style={{ color: C.primary }}>Pop. (hab./pixel)</span>
+                    <span className="text-[8px]" style={{ color: C.muted }}>baixo → alto</span>
+                  </div>
                 </div>
-              </div>
-            )}
-            {manchaCenario && showMancha && (
-              ALTURA_MANCHAS[cenario]
-                ? ALTURA_MANCHAS[cenario].legenda.map(({ label, cor }) => (
-                    <LegendItem key={`altura-${label}`} cor={cor} label={label} area />
-                  ))
-                : <LegendItem cor={COLORS.cenario} label={cenario} area />
-            )}
-          </div>
-        )}
+              )}
+              {manchaCenario && showMancha && (
+                ALTURA_MANCHAS[cenario]
+                  ? ALTURA_MANCHAS[cenario].legenda.map(({ label, cor }) => (
+                      <LegendItem key={`altura-${label}`} cor={cor} label={label} area />
+                    ))
+                  : <LegendItem cor={COLORS.cenario} label={cenario} area />
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="px-2.5 py-1.5 rounded-xl select-none leading-none text-center pointer-events-none" style={glassStyle(0.55)}>
+          <span className="text-[9px] font-black uppercase tracking-wider" style={{ color: C.muted }}>© GPEa — Grupo de Pesquisa em Economia Azul</span>
+          <span className="text-[9px]" style={{ color: C.muted }}> | Alisson T. G. Fiorentin</span>
+        </div>
       </div>
 
       {/* ── Aviso metodológico (mancha binária) ─────────────────────────── */}
       {avisoMancha && (
         <div className="absolute inset-x-0 flex justify-center z-20 print:hidden px-4" style={{ top: panelTop }}>
-          <div className="flex items-start gap-2 px-3.5 py-2.5 rounded-xl shadow-2xl max-w-md animate-fade-in-up" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
+          <div className="flex items-start gap-2 px-3.5 py-2.5 rounded-xl shadow-2xl max-w-md animate-fade-in-up" style={glassStyle(0.75)}>
             <span className="text-sm leading-none shrink-0 mt-0.5">⚠️</span>
             <p className="text-[11px] leading-snug" style={{ color: C.primary }}>{avisoMancha}</p>
             <button onClick={() => setAvisoMancha(null)} aria-label="Fechar aviso"
@@ -1364,32 +1422,24 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
         </div>
       )}
 
-      {/* ── Copyright ────────────────────────────────────────────────── */}
-      <div className="absolute bottom-4 inset-x-0 flex justify-center z-10 print:hidden pointer-events-none">
-        <div className="px-2.5 py-0.5 rounded-xl shadow-lg select-none leading-none text-center" style={{ backgroundColor: "#fff", border: `1px solid ${C.border}` }}>
-          <span className="text-[9px] font-black uppercase tracking-wider" style={{ color: C.muted }}>© GPEa — Grupo de Pesquisa em Economia Azul</span>
-          <span className="text-[9px]" style={{ color: C.muted }}> | Alisson T. G. Fiorentin</span>
-        </div>
-      </div>
-
       {/* ── Header — sempre em 1 linha (scroll horizontal se faltar espaço); painéis seguem panelTop */}
-      <header ref={headerRef} className="absolute top-2 left-4 right-4 px-4 py-1.5 flex flex-nowrap gap-x-4 items-center shadow-2xl z-20 rounded-xl print:hidden overflow-x-auto [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full" style={{ backgroundColor: C.primary, border: `1px solid ${C.dark}` }}>
+      <header ref={headerRef} className="absolute top-2 left-4 right-4 px-4 py-1.5 flex flex-nowrap gap-x-4 items-center shadow-2xl z-20 rounded-xl print:hidden overflow-x-auto [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full" style={HEADER_GLASS}>
 
         {/* Logos CIEX + GPEA */}
         <div className="flex items-center gap-3 shrink-0 border-r pr-4" style={{ borderColor: "rgba(255,255,255,0.2)" }}>
-          <Image src="/CIEX.png" alt="CIEX" width={80} height={28} className="object-contain" style={{ height: "1.75rem", width: "auto" }} onError={e => (e.currentTarget.style.display = "none")} />
-          <Image src="/GPEA.png" alt="GPEA" width={80} height={24} className="object-contain" style={{ height: "1.5rem", width: "auto" }} onError={e => (e.currentTarget.style.display = "none")} />
+          <Image src="/CIEX.png" alt="CIEX" width={80} height={28} className="object-contain" style={{ height: HEADER_FLUID.logoH, width: "auto" }} onError={e => (e.currentTarget.style.display = "none")} />
+          <Image src="/GPEA.png" alt="GPEA" width={80} height={24} className="object-contain" style={{ height: HEADER_FLUID.logoHSecondary, width: "auto" }} onError={e => (e.currentTarget.style.display = "none")} />
           <div className="pl-3 flex flex-col justify-center">
-            <h1 className="text-[14px] font-black leading-tight text-white whitespace-nowrap">Painel de Vulnerabilidade Econômica</h1>
-            <span className="text-[9px] font-medium tracking-wider uppercase text-white/70">Rio Grande, RS</span>
+            <h1 className="font-black leading-tight text-white whitespace-nowrap" style={{ fontSize: HEADER_FLUID.titleSize }}>Painel de Vulnerabilidade Econômica</h1>
+            <span className="font-medium tracking-wider uppercase text-white/70" style={{ fontSize: HEADER_FLUID.subtitleSize }}>Rio Grande, RS</span>
           </div>
         </div>
 
         {/* Cenário */}
         <div className="flex flex-col gap-0 shrink-0 border-r pr-4" style={{ borderColor: "rgba(255,255,255,0.2)" }}>
-          <label className="text-[8px] font-bold uppercase tracking-wider text-white/70">Cenário de Inundação</label>
+          <label className="font-bold uppercase tracking-wider text-white/70" style={{ fontSize: HEADER_FLUID.selectLabelSize }}>Cenário de Inundação</label>
           <Select value={cenario} onValueChange={setCenario}>
-            <SelectTrigger className="h-7 text-[10px] text-white border-white/20 w-44" style={{ backgroundColor: C.field }}><SelectValue placeholder="(nenhum)" /></SelectTrigger>
+            <SelectTrigger className="h-7 text-white border-white/20 w-44" style={{ backgroundColor: `${C.field}cc`, fontSize: HEADER_FLUID.selectTriggerSize }}><SelectValue placeholder="(nenhum)" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="(nenhum)">(Ver Total)</SelectItem>
               {CENARIOS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -1397,16 +1447,23 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
           </Select>
         </div>
 
-        <a
-          href="/perdas"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="h-7 px-2.5 flex items-center gap-1.5 rounded-md text-[10px] font-black active-press hover-lift whitespace-nowrap text-white/90 border border-white/20 hover:bg-white/10 focus-visible:outline-none shrink-0"
-          style={{ backgroundColor: C.field }}
-          title="Ver perdas operacionais estimadas"
-        >
-          <TrendingDown size={12} strokeWidth={2.5} />Perdas Operacionais
-        </a>
+        <div className="flex flex-col gap-1 shrink-0">
+          <Link
+            href="/perdas"
+            className="h-5 px-2.5 flex items-center gap-1.5 rounded-full text-[9px] font-black active-press hover-lift whitespace-nowrap text-white/90 border border-white/25 bg-white/10 hover:bg-white/20 focus-visible:outline-none"
+            title="Ver perdas operacionais estimadas"
+          >
+            <TrendingDown size={11} strokeWidth={2.5} />Perdas Operacionais
+          </Link>
+
+          <Link
+            href="/metodologia"
+            className="h-5 px-2.5 flex items-center gap-1.5 rounded-full text-[9px] font-black active-press hover-lift whitespace-nowrap text-white/90 border border-white/25 bg-white/10 hover:bg-white/20 focus-visible:outline-none"
+            title="Ver metodologia do painel"
+          >
+            <BookOpen size={11} strokeWidth={2.5} />Metodologia
+          </Link>
+        </div>
 
         {/* Camadas — inline em telas largas (≥xl); a linha inteira do header rola horizontalmente se faltar espaço */}
         <div className="hidden xl:flex flex-nowrap gap-1 items-center shrink-0">
@@ -1481,7 +1538,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
 
       {/* ── Filtros (direita) ─────────────────────────────────────────── */}
       {showFiltros && (temCamadaTabular || isCenarioAtivo) && (
-        <div className="print:hidden absolute right-4 flex flex-col gap-1.5 p-2.5 rounded-xl shadow-2xl z-10 w-36 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full" style={{ top: panelTop, maxHeight: `calc(100vh - ${panelTop + 20}px)`, backgroundColor: "#fff", border: `1px solid ${C.border}`, ["--tw-scrollbar-thumb" as any]: C.border }}>
+        <div className="print:hidden absolute right-4 flex flex-col gap-1.5 p-2.5 rounded-xl shadow-2xl z-10 w-36 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full" style={{ top: panelTop, maxHeight: `calc(100vh - ${panelTop + 20}px)`, ...glassStyle(0.6), ["--tw-scrollbar-thumb" as any]: C.border }}>
           <div className="flex justify-between items-center mb-0.5 border-b pb-1.5" style={{ borderColor: C.border }}>
             <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: C.primary }}>Filtros</span>
             <button onClick={() => setShowFiltros(false)} title="Recolher filtros" aria-label="Recolher filtros" className="flex items-center justify-center rounded p-0.5 hover:bg-slate-100 transition-colors" style={{ color: C.muted }}>
@@ -1636,17 +1693,15 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       )}
       {!showFiltros && (temCamadaTabular || isCenarioAtivo) && (
         <button onClick={() => setShowFiltros(true)}
-          className="absolute right-4 text-xs font-black shadow-2xl px-4 py-2 rounded-xl z-20 hover:bg-slate-50 active-press hover-lift flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 print:hidden"
-          style={{ top: panelTop, backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.primary }}
-          onMouseEnter={e => (e.currentTarget.style.backgroundColor = C.cardBg)}
-          onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#fff")}>
+          className="absolute right-4 text-xs font-black shadow-2xl px-4 py-2 rounded-xl z-20 active-press hover-lift flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 print:hidden"
+          style={{ top: panelTop, ...glassStyle(0.6), color: C.primary }}>
           <SlidersHorizontal size={12} strokeWidth={2.5} />Filtros
         </button>
       )}
 
       {/* ── Painel de Análise (esquerda flutuante) ─────────────────────── */}
       {showPainelAnalise && (
-        <div className="absolute left-4 bottom-4 w-[350px] flex flex-col backdrop-blur-md rounded-xl shadow-2xl p-4 overflow-hidden z-20 print:static print:w-full print:shadow-none print:max-h-none print:h-auto print:overflow-visible" style={{ top: panelTop, backgroundColor: `${C.bg}f2`, border: `1px solid ${C.border}`, animation: "panelSlideIn 320ms var(--ease-drawer) both" }}>
+        <div className="absolute left-4 bottom-4 w-[400px] flex flex-col rounded-xl shadow-2xl p-4 overflow-hidden z-20 print:static print:w-full print:shadow-none print:max-h-none print:h-auto print:overflow-visible" style={{ top: panelTop, ...glassStyle(0.6), animation: "panelSlideIn 320ms var(--ease-drawer) both" }}>
           <div className="mb-3 shrink-0">
             <h2 className="text-base font-black tracking-tight flex items-center justify-between" style={{ color: C.primary }}>
               Painel
@@ -1676,6 +1731,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
           <Tabs value={tabAtiva} className="w-full flex-1 flex flex-col overflow-hidden print:overflow-visible print:h-auto">
             <div className="flex flex-wrap gap-1.5 shrink-0 pb-3 border-b" style={{ borderColor: C.border }}>
               {([
+                { value: "resumo",      label: "Resumo",      icon: <LayoutGrid    size={11} strokeWidth={2.5} /> },
                 { value: "empresas",    label: "Empresas",    icon: <Building2     size={11} strokeWidth={2.5} /> },
                 { value: "saude",       label: "Saúde",       icon: <HeartPulse    size={11} strokeWidth={2.5} /> },
                 { value: "educacao",    label: "Educação",    icon: <GraduationCap size={11} strokeWidth={2.5} /> },
@@ -1750,6 +1806,70 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
               );
             })()}
 
+            {/* Resumo */}
+            <TabsContent value="resumo" className="flex-1 overflow-y-auto mt-4 pr-2 pb-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full">
+              {(() => {
+                const staffBase    = Object.values(metricasSau.base.staff).reduce((a, b) => a + (b as number), 0);
+                const staffImpacto = Object.values(metricasSau.impacto.staff).reduce((a, b) => a + (b as number), 0);
+                const infraLog = infraStats?.["Logradouros"];
+                const haBaseAgri = metricasAgri.base.reduce((s, { ha }) => s + ha, 0);
+                const haImpAgri  = metricasAgri.impacto.reduce((s, { ha }) => s + ha, 0);
+
+                const tiles: { icon: React.ReactNode; cor: string; titulo: string; valor: number; base: number; sufixo?: string; casas?: number }[] = [
+                  { icon: <Users size={15} strokeWidth={2.5} />,       cor: COLORS.empresas,  titulo: "Empregados",     valor: isCenarioAtivo ? metricasEmp.impacto.emp   : metricasEmp.base.emp,   base: metricasEmp.base.emp },
+                  { icon: <Building2 size={15} strokeWidth={2.5} />,   cor: COLORS.empresas,  titulo: "Empresas",       valor: isCenarioAtivo ? metricasEmp.impacto.estab : metricasEmp.base.estab, base: metricasEmp.base.estab },
+                  { icon: <Wallet size={15} strokeWidth={2.5} />,      cor: COLORS.empresas,  titulo: "Massa Salarial", valor: isCenarioAtivo ? metricasEmp.impacto.massa : metricasEmp.base.massa, base: metricasEmp.base.massa, sufixo: "R$" },
+                  { icon: <GraduationCap size={15} strokeWidth={2.5} />, cor: COLORS.educacao, titulo: "Escolas",       valor: isCenarioAtivo ? metricasEdu.impacto.escolas : metricasEdu.base.escolas, base: metricasEdu.base.escolas },
+                  { icon: <HeartPulse size={15} strokeWidth={2.5} />,  cor: COLORS.saude,     titulo: "Unidades de Saúde", valor: isCenarioAtivo ? metricasSau.impacto.unidades : metricasSau.base.unidades, base: metricasSau.base.unidades },
+                  { icon: <Stethoscope size={15} strokeWidth={2.5} />, cor: COLORS.saude,     titulo: "Profissionais Saúde", valor: isCenarioAtivo ? staffImpacto : staffBase, base: staffBase },
+                  ...(metricasPatrimonio.base.total > 0 ? [{ icon: <Landmark size={15} strokeWidth={2.5} />, cor: COLORS.patrimonio, titulo: "Patrimônio Histórico", valor: isCenarioAtivo ? metricasPatrimonio.impacto.total : metricasPatrimonio.base.total, base: metricasPatrimonio.base.total }] : []),
+                  ...(infraLog ? [{ icon: <Route size={15} strokeWidth={2.5} />, cor: INFRA_COLORS["Logradouros"], titulo: "Segmentos de Via", valor: isCenarioAtivo ? infraLog.segmentos_atingidos : infraLog.segmentos_total, base: infraLog.segmentos_total }] : []),
+                ];
+
+                return (
+                  <>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      {tiles.map((t, i) => {
+                        const pct = t.base > 0 ? (t.valor / t.base) * 100 : 0;
+                        const valorFmt = t.sufixo === "R$" ? `R$ ${compactoBr(t.valor, 1)}` : compactoBr(t.valor, t.valor < 1000 ? 0 : 1);
+                        const sub = isCenarioAtivo
+                          ? `de ${t.sufixo === "R$" ? `R$ ${compactoBr(t.base, 1)}` : compactoBr(t.base, 1)} (${Math.round(pct)}%)`
+                          : "Total";
+                        return (
+                          <MiniStatCard key={i} icon={t.icon} cor={t.cor} titulo={t.titulo} valor={valorFmt} sub={sub} pct={isCenarioAtivo ? pct : 100} isLoading={isLoading} />
+                        );
+                      })}
+                    </div>
+
+                    {haBaseAgri > 0 && (
+                      <div className="rounded-lg overflow-hidden shadow-sm mb-2">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5" style={{ background: BRAND_GRADIENT }}>
+                          <Sprout size={12} strokeWidth={2.5} className="text-white" />
+                          <span className="text-[10px] font-black uppercase tracking-wider text-white">Área Agrícola</span>
+                        </div>
+                        <div className="flex items-center gap-3 px-3 py-2.5" style={glassStyle(0.5)}>
+                          <DonutChart
+                            size={56} strokeWidth={7} highlightOnHover={false}
+                            data={[
+                              { value: isCenarioAtivo ? haImpAgri : haBaseAgri, color: COLORS.agricultura, label: "Área" },
+                              { value: Math.max(0, haBaseAgri - (isCenarioAtivo ? haImpAgri : haBaseAgri)), color: `${COLORS.agricultura}22`, label: "Resto" },
+                            ]}
+                            centerContent={<span className="text-[10px] font-black" style={{ color: COLORS.agricultura }}>{haBaseAgri > 0 ? Math.round(((isCenarioAtivo ? haImpAgri : haBaseAgri) / haBaseAgri) * 100) : 0}%</span>}
+                          />
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: C.muted }}>{isCenarioAtivo ? "Área Atingida" : "Área Total"}</span>
+                            <span className="font-black leading-tight" style={{ color: C.primary, fontSize: PANEL_FLUID.fontValor }}>{compactoBr(isCenarioAtivo ? haImpAgri : haBaseAgri, 1)} ha</span>
+                            {isCenarioAtivo && <span className="text-[9px]" style={{ color: C.muted }}>de {compactoBr(haBaseAgri, 1)} ha</span>}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                  </>
+                );
+              })()}
+            </TabsContent>
+
             {/* Empresas */}
             <TabsContent value="empresas" className="flex-1 overflow-y-auto mt-4 pr-2 pb-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full">
               {setoresChart.length > 0 && (() => {
@@ -1759,26 +1879,20 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 return (
                   <>
                     <h3 className="text-[11px] font-black uppercase tracking-wider mb-1 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Empresas</h3>
-                    <div className="relative flex items-center justify-center">
-                      <ResponsiveContainer width="100%" height={170}>
-                        <PieChart>
-                          <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={76} paddingAngle={2} dataKey="value" stroke="none" cursor="pointer"
-                            onClick={(d: any) => setFiltroSetor(filtroSetor === d.name ? "(todos)" : d.name)}>
-                            {pieData.map((entry, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} opacity={filtroSetor !== "(todos)" && filtroSetor !== entry.name ? 0.35 : 1} />)}
-                          </Pie>
-                          <Tooltip
-                            formatter={(v: any) => [`${v} empresa${v !== 1 ? "s" : ""}`, ""]}
-                            contentStyle={{ fontSize: 11, borderRadius: 8, border: `1px solid ${C.border}`, padding: "4px 10px" }}
-                            itemStyle={{ color: C.primary }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="absolute flex flex-col items-center pointer-events-none">
-                        <span className="text-2xl font-black leading-none" style={{ color: C.primary }}>{total}</span>
-                        {isCenarioAtivo
-                          ? <><span className="text-[9px] font-medium" style={{ color: C.muted }}>{Math.round(total / totalBase * 100)}% empresas</span><span className="text-[9px]" style={{ color: C.muted }}>de {totalBase}</span></>
-                          : <span className="text-[9px] font-medium" style={{ color: C.muted }}>empresas</span>}
-                      </div>
+                    <div className="flex items-center justify-center py-1">
+                      <DonutChart
+                        size={152} strokeWidth={26} cssSize={PANEL_FLUID.donutCss}
+                        data={pieData.map((d, i) => ({ value: d.value as number, color: DONUT_COLORS[i % DONUT_COLORS.length], label: d.name, opacity: filtroSetor !== "(todos)" && filtroSetor !== d.name ? 0.35 : 1 }))}
+                        onSegmentClick={seg => setFiltroSetor(filtroSetor === seg.label ? "(todos)" : seg.label)}
+                        centerContent={
+                          <div className="flex flex-col items-center">
+                            <span className="font-black leading-none" style={{ color: C.primary, fontSize: PANEL_FLUID.fontValor }}>{total}</span>
+                            {isCenarioAtivo
+                              ? <><span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>{Math.round(total / totalBase * 100)}% empresas</span><span style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>de {totalBase}</span></>
+                              : <span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>empresas</span>}
+                          </div>
+                        }
+                      />
                     </div>
                     <div className="flex flex-col gap-0.5 mb-3">
                       {setoresChart.map(([setor, count], i) => (
@@ -1871,22 +1985,20 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 return (
                   <>
                     <h3 className="text-[11px] font-black uppercase tracking-wider mb-1 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Escolas</h3>
-                    <div className="relative flex items-center justify-center">
-                      <ResponsiveContainer width="100%" height={160}>
-                        <PieChart>
-                          <Pie data={pieData} cx="50%" cy="50%" innerRadius={46} outerRadius={70} paddingAngle={2} dataKey="value" stroke="none" cursor="pointer"
-                            onClick={(d: any) => setFiltroDep(filtroDep === d.name ? "(todas)" : d.name)}>
-                            {pieData.map((d, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} opacity={filtroDep !== "(todas)" && filtroDep !== d.name ? 0.35 : 1} />)}
-                          </Pie>
-                          <Tooltip formatter={(v: any) => [`${v} escola${v !== 1 ? "s" : ""}`, ""]} contentStyle={{ fontSize: 11, borderRadius: 8, border: `1px solid ${C.border}`, padding: "4px 10px" }} itemStyle={{ color: C.primary }} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="absolute flex flex-col items-center pointer-events-none">
-                        <span className="text-2xl font-black leading-none" style={{ color: C.primary }}>{totalDep}</span>
-                        {isCenarioAtivo
-                          ? <><span className="text-[9px] font-medium" style={{ color: C.muted }}>{Math.round(totalDep / baseTotalDep * 100)}% escolas</span><span className="text-[9px]" style={{ color: C.muted }}>de {baseTotalDep}</span></>
-                          : <span className="text-[10px] font-medium" style={{ color: C.muted }}>escolas</span>}
-                      </div>
+                    <div className="flex items-center justify-center py-1">
+                      <DonutChart
+                        size={140} strokeWidth={24} cssSize={PANEL_FLUID.donutCss}
+                        data={pieData.map((d, i) => ({ value: d.value as number, color: DONUT_COLORS[i % DONUT_COLORS.length], label: d.name, opacity: filtroDep !== "(todas)" && filtroDep !== d.name ? 0.35 : 1 }))}
+                        onSegmentClick={seg => setFiltroDep(filtroDep === seg.label ? "(todas)" : seg.label)}
+                        centerContent={
+                          <div className="flex flex-col items-center">
+                            <span className="font-black leading-none" style={{ color: C.primary, fontSize: PANEL_FLUID.fontValor }}>{totalDep}</span>
+                            {isCenarioAtivo
+                              ? <><span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>{Math.round(totalDep / baseTotalDep * 100)}% escolas</span><span style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>de {baseTotalDep}</span></>
+                              : <span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>escolas</span>}
+                          </div>
+                        }
+                      />
                     </div>
                     <div className="flex flex-col gap-0.5 mb-2">
                       {pieData.map((d, i) => (
@@ -1979,21 +2091,19 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 return (
                   <>
                     <h3 className="text-[11px] font-black uppercase tracking-wider mt-4 mb-1 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Educação</h3>
-                    <div className="relative flex items-center justify-center">
-                      <ResponsiveContainer width="100%" height={170}>
-                        <PieChart>
-                          <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={76} paddingAngle={2} dataKey="value" stroke="none">
-                            {pieData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
-                          </Pie>
-                          <Tooltip formatter={(v: any) => [`${compactoBr(v, 0)} alunos`, ""]} contentStyle={{ fontSize: 11, borderRadius: 8, border: `1px solid ${C.border}`, padding: "4px 10px" }} itemStyle={{ color: C.primary }} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="absolute flex flex-col items-center pointer-events-none">
-                        <span className="text-2xl font-black leading-none" style={{ color: C.primary }}>{compactoBr(totalAlunos, 0)}</span>
-                        {isCenarioAtivo
-                          ? <><span className="text-[9px] font-medium" style={{ color: C.muted }}>{baseAlunos > 0 ? Math.round(totalAlunos / baseAlunos * 100) : 0}% alunos</span><span className="text-[9px]" style={{ color: C.muted }}>de {compactoBr(baseAlunos, 0)}</span></>
-                          : <span className="text-[10px] font-medium" style={{ color: C.muted }}>alunos</span>}
-                      </div>
+                    <div className="flex items-center justify-center py-1">
+                      <DonutChart
+                        size={152} strokeWidth={26} cssSize={PANEL_FLUID.donutCss}
+                        data={pieData.map((d, i) => ({ value: d.value as number, color: DONUT_COLORS[i % DONUT_COLORS.length], label: d.name }))}
+                        centerContent={
+                          <div className="flex flex-col items-center">
+                            <span className="font-black leading-none" style={{ color: C.primary, fontSize: PANEL_FLUID.fontValor }}>{compactoBr(totalAlunos, 0)}</span>
+                            {isCenarioAtivo
+                              ? <><span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>{baseAlunos > 0 ? Math.round(totalAlunos / baseAlunos * 100) : 0}% alunos</span><span style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>de {compactoBr(baseAlunos, 0)}</span></>
+                              : <span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>alunos</span>}
+                          </div>
+                        }
+                      />
                     </div>
                     <div className="flex flex-col gap-1.5 pb-2">
                       {pieData.map((d, i) => (
@@ -2027,22 +2137,20 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                 return (
                   <>
                     <h3 className="text-[11px] font-black uppercase tracking-wider mt-2 mb-1 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Unidades por Tipo</h3>
-                    <div className="relative flex items-center justify-center">
-                      <ResponsiveContainer width="100%" height={170}>
-                        <PieChart>
-                          <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={76} paddingAngle={2} dataKey="value" stroke="none" cursor="pointer"
-                            onClick={(d: any) => setFiltroTipo(filtroTipo === d.name ? "(todas)" : d.name)}>
-                            {pieData.map((d, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} opacity={filtroTipo !== "(todas)" && filtroTipo !== d.name ? 0.35 : 1} />)}
-                          </Pie>
-                          <Tooltip formatter={(v: any) => [`${v} unidade${v !== 1 ? "s" : ""}`, ""]} contentStyle={{ fontSize: 11, borderRadius: 8, border: `1px solid ${C.border}`, padding: "4px 10px" }} itemStyle={{ color: C.primary }} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="absolute flex flex-col items-center pointer-events-none">
-                        <span className="text-2xl font-black leading-none" style={{ color: C.primary }}>{totalU}</span>
-                        {isCenarioAtivo
-                          ? <><span className="text-[9px] font-medium" style={{ color: C.muted }}>{Math.round(totalU / metricasSau.base.unidades * 100)}% unidades</span><span className="text-[9px]" style={{ color: C.muted }}>de {metricasSau.base.unidades}</span></>
-                          : <span className="text-[10px] font-medium" style={{ color: C.muted }}>unidades</span>}
-                      </div>
+                    <div className="flex items-center justify-center py-1">
+                      <DonutChart
+                        size={152} strokeWidth={26} cssSize={PANEL_FLUID.donutCss}
+                        data={pieData.map((d, i) => ({ value: d.value, color: DONUT_COLORS[i % DONUT_COLORS.length], label: d.name, opacity: filtroTipo !== "(todas)" && filtroTipo !== d.name ? 0.35 : 1 }))}
+                        onSegmentClick={seg => setFiltroTipo(filtroTipo === seg.label ? "(todas)" : seg.label)}
+                        centerContent={
+                          <div className="flex flex-col items-center">
+                            <span className="font-black leading-none" style={{ color: C.primary, fontSize: PANEL_FLUID.fontValor }}>{totalU}</span>
+                            {isCenarioAtivo
+                              ? <><span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>{Math.round(totalU / metricasSau.base.unidades * 100)}% unidades</span><span style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>de {metricasSau.base.unidades}</span></>
+                              : <span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>unidades</span>}
+                          </div>
+                        }
+                      />
                     </div>
                     <div className="flex flex-col gap-0.5 mb-3">
                       {pieData.map((d, i) => (
@@ -2152,22 +2260,20 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                   return (
                     <>
                       <h3 className="text-[11px] font-black uppercase tracking-wider mt-4 mb-1 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Por Tipologia</h3>
-                      <div className="relative flex items-center justify-center">
-                        <ResponsiveContainer width="100%" height={170}>
-                          <PieChart>
-                            <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={76} paddingAngle={2} dataKey="value" stroke="none" cursor="pointer"
-                              onClick={(d: any) => setFiltroTipologia(filtroTipologia === d.name ? "(todas)" : d.name)}>
-                              {pieData.map((d, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} opacity={filtroTipologia !== "(todas)" && filtroTipologia !== d.name ? 0.35 : 1} />)}
-                            </Pie>
-                            <Tooltip formatter={(v: any) => [`${v} item${v !== 1 ? "s" : ""}`, ""]} contentStyle={{ fontSize: 11, borderRadius: 8, border: `1px solid ${C.border}`, padding: "4px 10px" }} itemStyle={{ color: C.primary }} />
-                          </PieChart>
-                        </ResponsiveContainer>
-                        <div className="absolute flex flex-col items-center pointer-events-none">
-                          <span className="text-2xl font-black leading-none" style={{ color: C.primary }}>{totalT}</span>
-                          {isCenarioAtivo
-                            ? <><span className="text-[9px] font-medium" style={{ color: C.muted }}>{Math.round(totalT / metricasPatrimonio.base.total * 100)}% do total</span><span className="text-[9px]" style={{ color: C.muted }}>de {metricasPatrimonio.base.total}</span></>
-                            : <span className="text-[10px] font-medium" style={{ color: C.muted }}>itens</span>}
-                        </div>
+                      <div className="flex items-center justify-center py-1">
+                        <DonutChart
+                          size={152} strokeWidth={26} cssSize={PANEL_FLUID.donutCss}
+                          data={pieData.map((d, i) => ({ value: d.value, color: DONUT_COLORS[i % DONUT_COLORS.length], label: d.name, opacity: filtroTipologia !== "(todas)" && filtroTipologia !== d.name ? 0.35 : 1 }))}
+                          onSegmentClick={seg => setFiltroTipologia(filtroTipologia === seg.label ? "(todas)" : seg.label)}
+                          centerContent={
+                            <div className="flex flex-col items-center">
+                              <span className="font-black leading-none" style={{ color: C.primary, fontSize: PANEL_FLUID.fontValor }}>{totalT}</span>
+                              {isCenarioAtivo
+                                ? <><span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>{Math.round(totalT / metricasPatrimonio.base.total * 100)}% do total</span><span style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>de {metricasPatrimonio.base.total}</span></>
+                                : <span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>itens</span>}
+                            </div>
+                          }
+                        />
                       </div>
                       <div className="flex flex-col gap-0.5 mb-3">
                         {pieData.map((d, i) => (
@@ -2218,21 +2324,19 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                         return (
                           <>
                             <h3 className="text-[11px] font-black uppercase tracking-wider mb-1 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Área por Cultura</h3>
-                            <div className="relative flex items-center justify-center">
-                              <ResponsiveContainer width="100%" height={170}>
-                                <PieChart>
-                                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={76} paddingAngle={2} dataKey="value" stroke="none">
-                                    {pieData.map((d, i) => <Cell key={i} fill={d.cor} />)}
-                                  </Pie>
-                                  <Tooltip formatter={(v: any) => [`${formatoBr(v, 0)} ha`, ""]} contentStyle={{ fontSize: 11, borderRadius: 8, border: `1px solid ${C.border}`, padding: "4px 10px" }} itemStyle={{ color: C.primary }} />
-                                </PieChart>
-                              </ResponsiveContainer>
-                              <div className="absolute flex flex-col items-center pointer-events-none">
-                                <span className="text-xl font-black leading-none" style={{ color: C.primary }}>{compactoBr(haTotal, 1)}</span>
-                                {isCenarioAtivo
-                                  ? <><span className="text-[9px] font-medium" style={{ color: C.muted }}>{haBase > 0 ? (haTotal / haBase * 100).toFixed(2) : "0,00"}% da área</span><span className="text-[9px]" style={{ color: C.muted }}>de {compactoBr(haBase, 1)} ha</span></>
-                                  : <span className="text-[9px] font-medium" style={{ color: C.muted }}>ha</span>}
-                              </div>
+                            <div className="flex items-center justify-center py-1">
+                              <DonutChart
+                                size={152} strokeWidth={26} cssSize={PANEL_FLUID.donutCss}
+                                data={pieData.map(d => ({ value: d.value, color: d.cor, label: d.name }))}
+                                centerContent={
+                                  <div className="flex flex-col items-center">
+                                    <span className="font-black leading-none" style={{ color: C.primary, fontSize: PANEL_FLUID.fontValor }}>{compactoBr(haTotal, 1)}</span>
+                                    {isCenarioAtivo
+                                      ? <><span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>{haBase > 0 ? (haTotal / haBase * 100).toFixed(2) : "0,00"}% da área</span><span style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>de {compactoBr(haBase, 1)} ha</span></>
+                                      : <span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>ha</span>}
+                                  </div>
+                                }
+                              />
                             </div>
                           </>
                         );
@@ -2285,21 +2389,19 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                         return (
                           <>
                             <h3 className="text-[11px] font-black uppercase tracking-wider mb-1 border-b border-slate-200/60 pb-1" style={{ color: C.primary }}>Área por Classe</h3>
-                            <div className="relative flex items-center justify-center">
-                              <ResponsiveContainer width="100%" height={170}>
-                                <PieChart>
-                                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={76} paddingAngle={2} dataKey="value" stroke="none">
-                                    {pieData.map((d, i) => <Cell key={i} fill={d.cor} />)}
-                                  </Pie>
-                                  <Tooltip formatter={(v: any) => [`${formatoBr(v, 0)} ha`, ""]} contentStyle={{ fontSize: 11, borderRadius: 8, border: `1px solid ${C.border}`, padding: "4px 10px" }} itemStyle={{ color: C.primary }} />
-                                </PieChart>
-                              </ResponsiveContainer>
-                              <div className="absolute flex flex-col items-center pointer-events-none">
-                                <span className="text-xl font-black leading-none" style={{ color: C.primary }}>{compactoBr(haTotal, 1)}</span>
-                                {isCenarioAtivo
-                                  ? <><span className="text-[9px] font-medium" style={{ color: C.muted }}>{haBase > 0 ? (haTotal / haBase * 100).toFixed(2) : "0,00"}% da área</span><span className="text-[9px]" style={{ color: C.muted }}>de {compactoBr(haBase, 1)} ha</span></>
-                                  : <span className="text-[9px] font-medium" style={{ color: C.muted }}>ha</span>}
-                              </div>
+                            <div className="flex items-center justify-center py-1">
+                              <DonutChart
+                                size={152} strokeWidth={26} cssSize={PANEL_FLUID.donutCss}
+                                data={pieData.map(d => ({ value: d.value, color: d.cor, label: d.name }))}
+                                centerContent={
+                                  <div className="flex flex-col items-center">
+                                    <span className="font-black leading-none" style={{ color: C.primary, fontSize: PANEL_FLUID.fontValor }}>{compactoBr(haTotal, 1)}</span>
+                                    {isCenarioAtivo
+                                      ? <><span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>{haBase > 0 ? (haTotal / haBase * 100).toFixed(2) : "0,00"}% da área</span><span style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>de {compactoBr(haBase, 1)} ha</span></>
+                                      : <span className="font-medium" style={{ color: C.muted, fontSize: PANEL_FLUID.fontLabel }}>ha</span>}
+                                  </div>
+                                }
+                              />
                             </div>
                             <div className="flex flex-col gap-2 mt-2 mb-1">
                               {pieData.map((d) => {
@@ -2430,20 +2532,18 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                         </h3>
                         <div className="flex flex-col gap-2">
                           {isCenarioAtivo && s.total > 0 && (
-                            <div className="relative flex items-center justify-center">
-                              <ResponsiveContainer width="100%" height={130}>
-                                <PieChart>
-                                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={38} outerRadius={58} paddingAngle={2} dataKey="value" stroke="none">
-                                    <Cell fill={cor} /><Cell fill={`${cor}25`} />
-                                  </Pie>
-                                  <Tooltip formatter={(v: any) => [compactoBr(v, 0), ""]} contentStyle={{ fontSize: 11, borderRadius: 8, border: `1px solid ${C.border}`, padding: "4px 10px" }} itemStyle={{ color: C.primary }} />
-                                </PieChart>
-                              </ResponsiveContainer>
-                              <div className="absolute flex flex-col items-center pointer-events-none">
-                                <span className="text-lg font-black leading-none" style={{ color: cor }}>{compactoBr(s.atingidos, 0)}</span>
-                                <span className="text-[9px] font-medium" style={{ color: C.muted }}>{pct}% atingidos</span>
-                                <span className="text-[9px]" style={{ color: C.muted }}>de {compactoBr(s.total, 0)}</span>
-                              </div>
+                            <div className="flex items-center justify-center py-1">
+                              <DonutChart
+                                size={116} strokeWidth={20} cssSize="clamp(90px, 14vh, 130px)"
+                                data={[{ value: pieData[0].value, color: cor, label: "Atingidos" }, { value: pieData[1].value, color: `${cor}25`, label: "Não Atingidos" }]}
+                                centerContent={
+                                  <div className="flex flex-col items-center">
+                                    <span className="text-lg font-black leading-none" style={{ color: cor }}>{compactoBr(s.atingidos, 0)}</span>
+                                    <span className="text-[9px] font-medium" style={{ color: C.muted }}>{pct}% atingidos</span>
+                                    <span className="text-[9px]" style={{ color: C.muted }}>de {compactoBr(s.total, 0)}</span>
+                                  </div>
+                                }
+                              />
                             </div>
                           )}
                           <h3 className="text-[10px] font-bold uppercase tracking-wider pt-2 pb-1 border-t" style={{ color: cor, borderColor: C.border }}>
@@ -2469,10 +2569,8 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       {/* ── Botão abrir painel ────────────────────────────────────────── */}
       {!showPainelAnalise && (
         <button onClick={() => setShowPainelAnalise(true)}
-          className="absolute left-4 text-xs font-black shadow-2xl px-4 py-2 rounded-xl z-20 active-press hover-lift bg-white flex items-center gap-1.5 focus-visible:outline-none print:hidden"
-          style={{ top: panelTop, backgroundColor: "#fff", border: `1px solid ${C.border}`, color: C.primary }}
-          onMouseEnter={e => (e.currentTarget.style.backgroundColor = C.cardBg)}
-          onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#fff")}>
+          className="absolute left-4 text-xs font-black shadow-2xl px-4 py-2 rounded-xl z-20 active-press hover-lift flex items-center gap-1.5 focus-visible:outline-none print:hidden"
+          style={{ top: panelTop, ...glassStyle(0.6), color: C.primary }}>
           <PanelLeft size={12} strokeWidth={2.5} />Abrir Painel
         </button>
       )}
@@ -2482,27 +2580,53 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
 
 // ─── Componentes auxiliares ───────────────────────────────────────────────────
 
+function MiniStatCard({ icon, cor, titulo, valor, sub, pct, isLoading }: {
+  icon: React.ReactNode; cor: string; titulo: string; valor: string | number; sub: string; pct?: number; isLoading?: boolean;
+}) {
+  const p = Math.max(0, Math.min(100, pct ?? 100));
+  return (
+    <div className="rounded-lg p-2.5 flex items-center gap-2.5" style={{ ...glassStyle(0.55), boxShadow: "none" }}>
+      <DonutChart
+        size={40} strokeWidth={5} highlightOnHover={false}
+        data={[{ value: p, color: cor, label: "atingido" }, { value: 100 - p, color: `${cor}22`, label: "resto" }]}
+        centerContent={<span style={{ color: cor }}>{icon}</span>}
+      />
+      <div className="flex flex-col min-w-0">
+        <span className="text-[8.5px] font-bold uppercase tracking-wider leading-tight truncate" style={{ color: C.muted }}>{titulo}</span>
+        {isLoading ? <Skeleton className="h-5 w-16 mt-0.5" /> : (
+          <span className="font-black leading-tight truncate" style={{ color: C.primary, fontSize: PANEL_FLUID.fontValor }}>{valor}</span>
+        )}
+        <span className="text-[9px] leading-none truncate" style={{ color: C.muted }}>{sub}</span>
+      </div>
+    </div>
+  );
+}
+
 function KPIRow({ titulo, valor, sub, delta, cor, isLoading }: { titulo: string; valor: string | number; sub: string; delta?: string; cor?: string; isLoading?: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg"
-      style={{ backgroundColor: C.cardBg, border: `1px solid ${C.border}`, borderLeft: `3px solid ${cor ?? C.primary}` }}>
-      <div className="flex flex-col min-w-0">
-        <span className="text-[11px] font-bold uppercase tracking-wider leading-tight" style={{ color: C.muted }}>{titulo}</span>
-        <span className="text-[10px] leading-none mt-0.5" style={{ color: C.muted }}>{sub}</span>
-        {delta && (
-          isLoading ? (
-            <Skeleton className="h-4 w-16 mt-1.5" />
-          ) : (
-            <span className="text-[9px] font-semibold mt-1.5 inline-block px-1.5 py-0.5 rounded w-fit"
-              style={{ backgroundColor: C.bg, border: `1px solid ${C.border}`, color: C.primary }}>{delta}</span>
-          )
+    <div className="rounded-lg overflow-hidden">
+      <div className="flex items-center gap-1.5 px-3 py-1" style={{ background: cor ? `linear-gradient(135deg, ${cor} 0%, ${C.primary} 100%)` : BRAND_GRADIENT }}>
+        {cor && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: "rgba(255,255,255,0.85)" }} />}
+        <span className="text-[9px] font-black uppercase tracking-wider text-white truncate leading-none">{titulo}</span>
+      </div>
+      <div className="flex items-center justify-between gap-3 px-3 py-2" style={{ ...glassStyle(0.5), boxShadow: "none" }}>
+        <div className="flex flex-col min-w-0">
+          <span className="text-[10px] leading-none" style={{ color: C.muted }}>{sub}</span>
+          {delta && (
+            isLoading ? (
+              <Skeleton className="h-4 w-16 mt-1.5" />
+            ) : (
+              <span className="text-[9px] font-semibold mt-1.5 inline-block px-1.5 py-0.5 rounded w-fit"
+                style={{ backgroundColor: C.bg, border: `1px solid ${C.border}`, color: C.primary }}>{delta}</span>
+            )
+          )}
+        </div>
+        {isLoading ? (
+          <Skeleton className="h-6 w-20 shrink-0" />
+        ) : (
+          <span className="font-black shrink-0 leading-none" style={{ color: C.primary, fontSize: PANEL_FLUID.fontValor }}>{valor}</span>
         )}
       </div>
-      {isLoading ? (
-        <Skeleton className="h-6 w-20 shrink-0" />
-      ) : (
-        <span className="text-2xl font-black shrink-0 leading-none" style={{ color: C.primary }}>{valor}</span>
-      )}
     </div>
   );
 }
@@ -2537,17 +2661,17 @@ function LegendItem({ cor, label, area }: { cor: string; label: string; area?: b
 
 function KPICard({ titulo, valor, sub, delta, isLoading }: { titulo: string; valor: string | number; sub: string; delta?: string; isLoading?: boolean }) {
   return (
-    <Card className="hover-lift" style={{ backgroundColor: C.cardBg, border: `1px solid ${C.border}` }}>
-      <CardHeader className="px-3 pt-2 pb-0">
-        <CardTitle className="text-[10px] font-bold uppercase tracking-wider leading-tight" style={{ color: C.muted }}>{titulo}</CardTitle>
-      </CardHeader>
-      <CardContent className="px-3 pb-2 pt-1 flex flex-col">
+    <Card className="hover-lift overflow-hidden p-0 gap-0 border-0 shadow-none">
+      <div className="px-3 py-1.5" style={{ background: BRAND_GRADIENT }}>
+        <CardTitle className="text-[10px] font-black uppercase tracking-wider leading-tight text-white">{titulo}</CardTitle>
+      </div>
+      <CardContent className="px-3 pb-2.5 pt-2 flex flex-col" style={{ ...glassStyle(0.5), boxShadow: "none" }}>
         {isLoading ? (
           <Skeleton className="h-6 w-24 mb-1" />
         ) : (
-          <div className="text-lg font-black leading-tight" style={{ color: C.primary }}>{valor}</div>
+          <div className="font-black leading-tight" style={{ color: C.primary, fontSize: PANEL_FLUID.fontValor }}>{valor}</div>
         )}
-        <div className="text-[10px] font-medium leading-none mb-1" style={{ color: C.muted }}>{sub}</div>
+        <div className="text-[10px] font-medium leading-none mb-1 mt-0.5" style={{ color: C.muted }}>{sub}</div>
         {delta && (
           isLoading ? (
             <Skeleton className="h-4 w-16" />
