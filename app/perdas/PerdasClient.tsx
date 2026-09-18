@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { TrendingDown } from "lucide-react";
-import { KpiRow, Section, SubTitle, MathBlock, DataTable, Note, SectionSources, RefBlock, RefItem } from "@/components/doc-kit";
+import { KpiRow, Section, SubTitle, DataTable, Note } from "@/components/doc-kit";
+import { HeaderLogos } from "@/components/HeaderLogos";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 export interface CenarioPerdas {
@@ -93,23 +94,27 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="text-white px-6 py-10 print:py-5" style={{ backgroundColor: PRIMARY }}>
-        <div className="max-w-[1200px] mx-auto">
-          <div className="flex items-center gap-2 mb-5 print:hidden">
-            <Link href="/" className="text-[10px] font-bold text-white/70 hover:text-white transition-colors px-3 py-1 rounded-full border border-white/20 hover:border-white/40 flex items-center gap-1.5">← Dashboard</Link>
+        <div className="max-w-[1200px] mx-auto flex items-start justify-between gap-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-5 print:hidden">
+              <Link href="/" className="text-[10px] font-bold text-white/70 hover:text-white transition-colors px-3 py-1 rounded-full border border-white/20 hover:border-white/40 flex items-center gap-1.5">← Dashboard</Link>
+              <Link href="/metodologia" className="text-[10px] font-bold text-white/70 hover:text-white transition-colors px-3 py-1 rounded-full border border-white/20 hover:border-white/40 flex items-center gap-1.5">Metodologia →</Link>
+            </div>
+            <p className="text-[11px] uppercase tracking-[0.18em] font-semibold opacity-60 mb-2">
+              CIEX · GPEA · FURG
+            </p>
+            <h1 className="text-4xl font-black leading-none mb-2 tracking-tight flex items-center gap-3">
+              <TrendingDown size={36} strokeWidth={2.5} className="opacity-80 shrink-0" />
+              Perdas Operacionais
+            </h1>
+            <p className="text-base opacity-75 font-medium">
+              Estimativa de Perdas Econômicas — Cenários de Inundação em Rio Grande (RS)
+            </p>
+            <p className="text-[11px] opacity-50 mt-3 font-mono">
+              Metodologia DaLA (CEPAL/BID) · Maio 2024 e Setembro 2023
+            </p>
           </div>
-          <p className="text-[11px] uppercase tracking-[0.18em] font-semibold opacity-60 mb-2">
-            CIEX · GPEA · FURG
-          </p>
-          <h1 className="text-4xl font-black leading-none mb-2 tracking-tight flex items-center gap-3">
-            <TrendingDown size={36} strokeWidth={2.5} className="opacity-80 shrink-0" />
-            Perdas Operacionais
-          </h1>
-          <p className="text-base opacity-75 font-medium">
-            Estimativa de Perdas Econômicas — Cenários de Inundação em Rio Grande (RS)
-          </p>
-          <p className="text-[11px] opacity-50 mt-3 font-mono">
-            Metodologia DaLA (CEPAL/BID) · Maio 2024 e Setembro 2023
-          </p>
+          <HeaderLogos />
         </div>
       </header>
 
@@ -158,11 +163,7 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
                   ["#resumo",      "1. Resumo Geral"],
                   ["#cenarios",    "2. Análise por Cenário"],
                   ["#sensib",      "3. Sensibilidade por Duração"],
-                  ["#dala",        "4. Metodologia DaLA"],
-                  ["#componentes", "5. Componentes do Cálculo"],
-                  ["#parametros",  "6. Parâmetros Utilizados"],
-                  ["#cnae84",      "7. Nota — Admin. Pública"],
-                  ["#fontes",      "8. Fontes e Referências"],
+                  ["#notas",       "4. Notas e Ressalvas"],
                 ] as [string, string][]).map(([href, label]) => (
                   <li key={href}>
                     <a href={href} className="text-[11px] font-medium hover:underline underline-offset-4 transition-colors duration-150 leading-snug block py-0.5" style={{ color: PRIMARY }}>
@@ -319,177 +320,25 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
         </Section>
 
         {/* ══════════════════════════════════════════════════════════════════════
-            SEÇÃO 4 — METODOLOGIA
+            SEÇÃO 4 — NOTAS E RESSALVAS
         ══════════════════════════════════════════════════════════════════════ */}
-        <Section id="dala" num="4" title="Metodologia DaLA — Curva de Recuperação Linear">
-          <p>
-            A avaliação segue a metodologia{" "}
-            <strong>DaLA (Damage and Loss Assessment)</strong> da CEPAL/BID, que distingue
-            <em> danos</em> (destruição de ativos físicos) de <em>perdas</em>{" "}
-            (fluxo de produção não realizado durante o período de interrupção e recuperação).
-          </p>
-          <SubTitle>Curva de Recuperação Linear</SubTitle>
-          <p>
-            Durante a fase aguda (d<sub>a</sub> dias) a produção cessa; na recuperação
-            (d<sub>r</sub> dias) retorna gradualmente a 50% em média. O fator de
-            interrupção efetivo é:
-          </p>
-          <MathBlock exprs={[
-            { label: "Dias efetivos", tex: "d_{\\text{ef}} = d_a + \\dfrac{d_r}{2}" },
-            { label: "Fator de interrupção", tex: "f = \\dfrac{d_{\\text{ef}}}{365}" },
-          ]} />
-          <DataTable rows={[
-            ["Período",       "Fase aguda (dₐ)", "Recuperação (dᵣ)", "Dias ef.", "f",      "Referência"],
-            ["Maio 2024",     "30 dias",         "60 dias",          "60 dias",  "0,1644", "DaLA RS — CEPAL, 2024"],
-            ["Setembro 2023", "15 dias",         "30 dias",          "30 dias",  "0,0822", "DaLA RS — CEPAL, 2024"],
-          ]} />
-          <SectionSources links={[
-            ["CEPAL (2024) — Avaliação dos Efeitos e Impactos das Inundações no Rio Grande do Sul", "https://www.cepal.org/pt-br/publicacoes/81035-avaliacao-efeitos-impactos-inundacoes-rio-grande-sul-novembro-2024"],
-            ["PDNA Guidelines Vol. A — GFDRR/UNDP/BM, 2013", "https://www.gfdrr.org/sites/default/files/2017-09/PDNA-Volume-A.pdf"],
-          ]} />
-        </Section>
+        <Section id="notas" num="4" title="Notas e Ressalvas">
+          <Note type="info">
+            A metodologia completa (curva de recuperação DaLA, fórmulas por componente, parâmetros e
+            fontes) está na{" "}
+            <Link href="/metodologia#perdas" className="font-semibold hover:underline underline-offset-4">
+              página de Metodologia ↗
+            </Link>. Esta seção reúne apenas as ressalvas de interpretação dos números acima.
+          </Note>
 
-        {/* ══════════════════════════════════════════════════════════════════════
-            SEÇÃO 5 — COMPONENTES
-        ══════════════════════════════════════════════════════════════════════ */}
-        <Section id="componentes" num="5" title="Componentes do Cálculo">
-
-          <SubTitle>5.1 — Empresas: Perda de VAB</SubTitle>
-          <p>
-            Os dados de folha salarial da RAIS 2023 fornecem a massa salarial mensal por
-            estabelecimento. A inversão pelo <em>labor share</em> é o método padrão da
-            contabilidade nacional quando apenas o dado salarial está disponível:
-          </p>
-          <MathBlock exprs={[
-            { label: "VAB anual (est.)", tex: "\\widehat{\\text{VAB}}_i = \\dfrac{w_{i,\\text{anual}}}{LS_s}" },
-            { label: "Perda total", tex: "\\text{EmpresasVAB} = \\sum_{i \\in \\text{atingidos}} \\widehat{\\text{VAB}}_i \\times f" },
-          ]} />
-          <DataTable rows={[
-            ["Setor (CNAE)",         "Labor share (LS)", "Fonte"],
-            ["Agropecuária (01–03)", "17,6%",            "IBGE SCN 2021 — Tab17"],
-            ["Indústria (05–39)",    "33,8%",            "IBGE SCN 2021 — Tab17"],
-            ["Adm. Pública (84)",    "88,3%",            "IBGE SCN 2021 — Tab17"],
-            ["Serviços e demais",    "43,3%",            "IBGE SCN 2021 — Tab17"],
-          ]} />
-          <SectionSources links={[
-            ["IBGE — SCN 2021, Tabela 17", "https://ftp.ibge.gov.br/Contas_Nacionais/Sistema_de_Contas_Nacionais/2021/tabelas_xls/sinoticas/"],
-            ["Karabarbounis & Neiman (2014, QJE) — The Global Decline of the Labor Share", "https://doi.org/10.1093/qje/qjt032"],
-          ]} />
-
-          <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-4 py-3 mt-1 mb-2 text-[11px] leading-relaxed text-amber-900 space-y-1.5">
-            <p className="font-bold text-[12px]">Nota — Por que não usar ICMS como alternativa?</p>
-            <p>
-              A arrecadação de ICMS municipal (SEFAZ-RS) foi avaliada como possível proxy de VAB perdido,
-              seguindo abordagem similar à adotada pela CEPAL (2024) em nível estadual via série ARIMA.
-              Em Rio Grande, o ICMS de maio/2024 apresentou alta de <strong>+43,8%</strong> em relação
-              ao baseline, enquanto o evento de cheia afetou principalmente abril/2024 (−41,4%). O
-              movimento positivo em maio reflete provavelmente a refinaria e o porto — atividades não
-              atingidas pela mancha de inundação — gerando ICMS normalmente, além de demanda emergencial
-              de combustíveis. O ICMS municipal, por ser agregado, não permite isolar a parcela gerada
-              por estabelecimentos dentro da mancha.
-            </p>
-            <p>
-              O método RAIS + <em>labor share</em> resolve essa limitação: opera no nível do
-              estabelecimento (CNPJ), aplica o teste ponto-em-polígono para isolar apenas firmas dentro
-              da mancha, e cobre todos os setores formais independentemente do tributo recolhido. O
-              ICMS permanece útil apenas como sinal de validação de ordem de grandeza, não como
-              metodologia de estimação.
-            </p>
-          </div>
-
-          <SubTitle>5.2 — Educação: Perdas + Custo de Reposição (DaLA)</SubTitle>
-          <p>
-            Dois componentes DaLA distintos, ambos com o mesmo custo unitário FUNDEB/aluno/dia:
-          </p>
-          <MathBlock exprs={[
-            { label: "Custo/aluno/dia", tex: "c = \\dfrac{\\text{VAAT-MIN}}{D_{\\text{letivos}}}" },
-            { label: "Perdas (serv. não prestado)", tex: "P_{\\text{edu}} = c \\times N_{\\text{alunos}} \\times d_a" },
-            { label: "Custo adicional (reposição)", tex: "C_{\\text{adic}} = c \\times N_{\\text{alunos}} \\times d_a" },
-            { label: "Total educação", tex: "\\text{Educação} = P_{\\text{edu}} + C_{\\text{adic}} = 2\\,c\\,N\\,d_a" },
-          ]} />
-          <p className="text-[12px] text-slate-500 mt-1">
-            A fase de recuperação usa <em>d</em><sub>a</sub> (dias de fechamento real), não <em>d</em><sub>ef</sub>,
-            porque escolas são obrigadas a compensar 100% dos dias perdidos —
-            não há recuperação parcial como em firmas.
-          </p>
-          <DataTable rows={[
-            ["Parâmetro",     "Valor",       "Fonte"],
-            ["VAAT-MIN 2024", "R$ 8.481,21", "Portaria Interministerial MEC/MF nº 9, 28/08/2024"],
-            ["Dias letivos",  "200",         "LDB Art. 24, I"],
-            ["dₐ — Maio 2024", "30 dias",   "DaLA RS — CEPAL, 2024"],
-            ["dₐ — Set. 2023", "15 dias",   "DaLA RS — CEPAL, 2024"],
-          ]} />
-          <SectionSources links={[
-            ["FNDE — FUNDEB 2024", "https://www.fnde.gov.br"],
-            ["LDB — Lei nº 9.394/1996, Art. 24", "https://www.planalto.gov.br/ccivil_03/leis/l9394.htm"],
-            ["Parecer CNE/CP nº 11/2024 — Flexibilização calendário escolar RS", "https://www.gov.br/mec/pt-br/assuntos/conselho-nacional-de-educacao"],
-          ]} />
-
-          <SubTitle>5.3 — Saúde: Perda de Produção SUS</SubTitle>
-          <MathBlock exprs={[
-            { label: "Produção anual CNES", tex: "P_k = \\bigl(P_{\\text{SIA},k} + P_{\\text{SIH},k}\\bigr) \\times \\dfrac{12}{7}" },
-            { label: "Perda saúde", tex: "\\text{Saúde} = \\sum_{k \\in \\text{atingidos}} P_k \\times f" },
-          ]} />
-          <SectionSources links={[
-            ["DataSUS — Produção Hospitalar SIH/SUS", "https://datasus.saude.gov.br/acesso-a-informacao/producao-hospitalar-sih-sus"],
-            ["DataSUS — Produção Ambulatorial SIA/SUS", "https://datasus.saude.gov.br/acesso-a-informacao/producao-ambulatorial-sia-sus"],
-          ]} />
-
-          <SubTitle>5.4 — Agricultura: Custo Direto de Produção</SubTitle>
-          <MathBlock exprs={[
-            { tex: "\\text{Agricultura} = \\sum_i \\text{Área}_i\\,[\\text{ha}] \\times \\text{Coef}_i\\,[\\text{R}\\$/\\text{ha}]" },
-          ]} />
-          <p className="text-[12px] text-slate-500 mt-1">
-            Rio Grande tem participação agrícola marginal frente aos demais componentes —
-            a mancha de inundação atinge majoritariamente a área urbana/portuária do município.
-          </p>
-          <DataTable rows={[
-            ["Cultura",                     "Período",    "Status",                      "Coef. (R$/ha)"],
-            ["Soja",                        "Maio 2024",  "Colhida — fev–abr/2024",      "R$ 1.100"],
-            ["Arroz",                       "Maio 2024",  "Colhido — fev–abr/2024",      "R$ 1.100"],
-            ["Outras Lavouras Temporárias", "Maio 2024",  "Plantio inicial — mai/2024",  "R$ 1.400"],
-            ["Soja",                        "Set. 2023",  "Pré-plantio",                 "R$ 250"],
-            ["Arroz",                       "Set. 2023",  "Pré-plantio",                 "R$ 250"],
-            ["Outras Lavouras Temporárias", "Set. 2023",  "Colheita — set–out/2023",     "R$ 2.800"],
-          ]} />
-          <SectionSources links={[
-            ["CONAB — Preços Mínimos 2024", "https://www.conab.gov.br/politica-agricola/precos-minimos"],
-            ["MapBiomas — Coleção 10", "https://brasil.mapbiomas.org/colecoes-mapbiomas-1/"],
-          ]} />
-        </Section>
-
-        {/* ══════════════════════════════════════════════════════════════════════
-            SEÇÃO 6 — PARÂMETROS
-        ══════════════════════════════════════════════════════════════════════ */}
-        <Section id="parametros" num="6" title="Parâmetros Utilizados">
-          <DataTable rows={[
-            ["Parâmetro",                   "Valor",         "Fonte"],
-            ["VAAT-MIN FUNDEB 2024",        "R$ 8.481,21",  "Portaria Interministerial MEC/MF nº 9/2024"],
-            ["Dias letivos/ano",            "200",           "LDB Art. 24, I"],
-            ["Labor share — Agropecuária",  "17,6%",         "IBGE SCN 2021 — Tab17"],
-            ["Labor share — Indústria",     "33,8%",         "IBGE SCN 2021 — Tab17"],
-            ["Labor share — Adm. Pública",  "88,3%",         "IBGE SCN 2021 — Tab17"],
-            ["Labor share — Serviços",      "43,3%",         "IBGE SCN 2021 — Tab17"],
-            ["Fase aguda — Maio 2024",      "30 dias",       "DaLA RS — CEPAL, 2024"],
-            ["Recuperação — Maio 2024",     "60 dias",       "DaLA RS — CEPAL, 2024"],
-            ["Fase aguda — Set. 2023",      "15 dias",       "DaLA RS — CEPAL, 2024"],
-            ["Recuperação — Set. 2023",     "30 dias",       "DaLA RS — CEPAL, 2024"],
-            ["Meses SIA/SIH disponíveis",   "7 (jan–jul/24)","DataSUS"],
-          ]} />
-        </Section>
-
-        {/* ══════════════════════════════════════════════════════════════════════
-            SEÇÃO 7 — CNAE 84
-        ══════════════════════════════════════════════════════════════════════ */}
-        <Section id="cnae84" num="7" title="Nota — Administração Pública (CNAE 84)">
+          <SubTitle>Administração Pública (CNAE 84)</SubTitle>
           <p>
             Os estabelecimentos com CNAE 84 (<em>Administração Pública, Defesa e Seguridade Social</em>)
             são <strong>incluídos</strong> na estimativa — a interrupção de serviços governamentais
             representa perdas reais para a sociedade, conforme a metodologia DaLA (CEPAL, 2024).
           </p>
-          <SubTitle>Impacto quantitativo — Rio Grande / Cenário Maio 2024 + 50%</SubTitle>
           <DataTable rows={[
-            ["Indicador",                      "Valor"],
+            ["Indicador (Rio Grande / Maio 2024 + 50%)", "Valor"],
             ["Estabelecimentos CNAE 84",       "5"],
             ["Participação na massa salarial", "24,0%  (R$ 26,2 mi/mês)"],
             ["Contribuição ao total (60 dias)","≈ R$ 58,5 mi de R$ 460,0 mi"],
@@ -499,55 +348,25 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
             predominantemente composto por remunerações. Leitores que desejam excluir o setor
             público devem subtrair a contribuição do CNAE 84 dos valores apresentados.
           </Note>
-        </Section>
 
-        {/* ══════════════════════════════════════════════════════════════════════
-            SEÇÃO 8 — FONTES
-        ══════════════════════════════════════════════════════════════════════ */}
-        <Section id="fontes" num="8" title="Fontes e Referências">
-          <div className="space-y-4">
-            <RefBlock title="Metodologia DaLA">
-              <RefItem href="https://www.cepal.org/pt-br/publicacoes/81035-avaliacao-efeitos-impactos-inundacoes-rio-grande-sul-novembro-2024"
-                label="CEPAL (nov/2024) — Avaliação dos Efeitos e Impactos das Inundações no Rio Grande do Sul"
-                desc="Avaliação DaLA de R$ 88,9 bi nas enchentes RS 2024 — metodologia de referência para a curva linear de recuperação." />
-              <RefItem href="https://www.gfdrr.org/sites/default/files/2017-09/PDNA-Volume-A.pdf"
-                label="PDNA Vol. A Guidelines — GFDRR/UNDP/BM, 2013"
-                desc="Perdas = mudanças nos fluxos econômicos durante e após o desastre, estimadas pelo declínio no valor dos fluxos de produção." />
-            </RefBlock>
-            <RefBlock title="Dados Socioeconômicos">
-              <RefItem href="https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/estatisticas-trabalho/rais"
-                label="RAIS — MTE, 2023"
-                desc="Microdados de estabelecimentos, vínculos ativos e massa salarial — base da estimativa de VAB." />
-              <RefItem href="https://www.gov.br/inep/pt-br/areas-de-atuacao/pesquisas-estatisticas-e-indicadores/censo-escolar"
-                label="INEP — Censo Escolar, 2024"
-                desc="Matrículas ativas nas escolas atingidas — base do custo de reposição FUNDEB." />
-              <RefItem href="https://cnes.datasus.gov.br"
-                label="CNES — DataSUS, abr/2024"
-                desc="Estabelecimentos de saúde — chave de ligação com a produção SUS." />
-              <RefItem href="https://datasus.saude.gov.br"
-                label="SIA/SIH — DataSUS, jan–jul/2024"
-                desc="Produção ambulatorial e hospitalar por estabelecimento — base da perda de produção SUS." />
-            </RefBlock>
-            <RefBlock title="Parâmetros Setoriais">
-              <RefItem href="https://ftp.ibge.gov.br/Contas_Nacionais/Sistema_de_Contas_Nacionais/2021/tabelas_xls/sinoticas/"
-                label="IBGE — SCN 2021, Tabela 17"
-                desc="Única fonte pública com Remunerações por atividade econômica — base dos labor shares setoriais." />
-              <RefItem href="https://www.fnde.gov.br"
-                label="Portaria Interministerial MEC/MF nº 9, 28/08/2024"
-                desc="Define VAAT-MIN 2024 = R$ 8.481,21 — parâmetro do custo de reposição educacional." />
-              <RefItem href="https://doi.org/10.1093/qje/qjt032"
-                label="Karabarbounis & Neiman (2014, QJE) — The Global Decline of the Labor Share"
-                desc="Referência canônica para o labor share como métrica de distribuição funcional da renda." />
-            </RefBlock>
-            <RefBlock title="Dados Agrícolas">
-              <RefItem href="https://brasil.mapbiomas.org/colecoes-mapbiomas-1/"
-                label="MapBiomas — Coleção 10"
-                desc="Mapeamento de uso do solo (raster 30 m) — origem das áreas cultivadas por cultura." />
-              <RefItem href="https://www.conab.gov.br/politica-agricola/precos-minimos"
-                label="CONAB — Preços Mínimos 2024"
-                desc="Base para os coeficientes R$/ha de impacto agrícola por cultura e período." />
-            </RefBlock>
-          </div>
+          <SubTitle>Por que não usar ICMS como alternativa?</SubTitle>
+          <p>
+            A arrecadação de ICMS municipal (SEFAZ-RS) foi avaliada como possível proxy de VAB perdido,
+            seguindo abordagem similar à adotada pela CEPAL (2024) em nível estadual via série ARIMA.
+            Em Rio Grande, o ICMS de maio/2024 apresentou alta de <strong>+43,8%</strong> em relação
+            ao baseline, enquanto o evento de cheia afetou principalmente abril/2024 (−41,4%). O
+            movimento positivo em maio reflete provavelmente a refinaria e o porto — atividades não
+            atingidas pela mancha de inundação — gerando ICMS normalmente, além de demanda emergencial
+            de combustíveis. O ICMS municipal, por ser agregado, não permite isolar a parcela gerada
+            por estabelecimentos dentro da mancha.
+          </p>
+          <p>
+            O método RAIS + <em>labor share</em> resolve essa limitação: opera no nível do
+            estabelecimento (CNPJ), aplica o teste ponto-em-polígono para isolar apenas firmas dentro
+            da mancha, e cobre todos os setores formais independentemente do tributo recolhido. O
+            ICMS permanece útil apenas como sinal de validação de ordem de grandeza, não como
+            metodologia de estimação.
+          </p>
         </Section>
 
         <footer className="mt-12 pt-6 border-t border-[#c7d6d9] text-center print:mt-4">

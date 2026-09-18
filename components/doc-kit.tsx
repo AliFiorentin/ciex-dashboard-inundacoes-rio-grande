@@ -46,6 +46,32 @@ export function SubTitle({ primary = DOC_PRIMARY, children }: { primary?: string
   );
 }
 
+export function ExtLink({ href, primary = DOC_PRIMARY, children }: { href: string; primary?: string; children: React.ReactNode }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer"
+      className="font-medium hover:underline underline-offset-4 transition-colors duration-150" style={{ color: primary }}>
+      {children}
+    </a>
+  );
+}
+
+export function Math({ tex, display = false }: { tex: string; display?: boolean }) {
+  const html = katex.renderToString(tex, { displayMode: display, throwOnError: false, trust: false });
+  return <span dangerouslySetInnerHTML={{ __html: html }} className={display ? "block my-1" : "inline"} />;
+}
+
+export function GeoCard({ title, operation, primary = DOC_PRIMARY, children }: {
+  title: string; operation: string; primary?: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-[#c7d6d9] bg-white p-4 mt-3 shadow-sm">
+      <p className="text-[11px] font-black uppercase tracking-wider mb-0.5" style={{ color: primary }}>{title}</p>
+      <p className="text-[10px] font-mono mb-3" style={{ color: primary }}>{operation}</p>
+      {children}
+    </div>
+  );
+}
+
 export function MathBlock({ exprs, primary = DOC_PRIMARY }: { exprs: Array<{ label?: string; tex: string }>; primary?: string }) {
   return (
     <div className="my-3 px-5 py-4 bg-[#eef3f4] border border-[#c7d6d9] rounded-lg overflow-x-auto space-y-3">
