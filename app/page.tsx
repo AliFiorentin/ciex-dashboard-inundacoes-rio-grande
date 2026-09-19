@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import Map, { Source, Layer, NavigationControl, MapRef, Popup } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
-import * as XLSX from "xlsx";
 import * as turf from "@turf/turf";
 import Image from "next/image";
 import * as flatgeobuf from "flatgeobuf";
@@ -11,7 +10,7 @@ import Link from "next/link";
 
 import {
   Building2, GraduationCap, HeartPulse, Wrench, Leaf, Sprout, Landmark, Users, Layers,
-  Download, Printer, EyeOff, SlidersHorizontal, PanelLeft, PanelRightClose, TrendingDown, Info, BookOpen,
+  Printer, EyeOff, SlidersHorizontal, PanelLeft, PanelRightClose, TrendingDown, Info, BookOpen,
   LayoutGrid, Wallet, Stethoscope, Route,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1069,28 +1068,6 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
     return null;
   };
 
-  // ─── Exportação ───────────────────────────────────────────────────────────
-
-  const exportarExcel = useCallback(() => {
-    const wb = XLSX.utils.book_new();
-    const add = (data: any, nome: string) => {
-      if (data?.features?.length > 0)
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.features.map((f: any) => f.properties)), nome);
-    };
-    if (camadas.includes("Empresas")) add(atingidosEmpresas || baseEmpresas, "Empresas");
-    if (camadas.includes("Educação")) add(atingidosEducacao || baseEducacao, "Educação");
-    if (camadas.includes("Saúde"))    add(atingidosSaude    || baseSaude,    "Saúde");
-    if (camadas.includes("Patrimônio Histórico")) add(atingidosPatrimonio || basePatrimonio, "Patrimônio Histórico");
-    if (camadas.includes("Infraestrutura")) {
-      infraAtivas.forEach(infra => {
-        const src = isCenarioAtivo ? atingidosInfra[infra] : baseInfra[infra];
-        if (src) add(src, `Infra-${infra.slice(0, 20)}`);
-      });
-    }
-    const sufixo = cenario !== "(nenhum)" ? `_${slugify(cenario)}` : "";
-    XLSX.writeFile(wb, `Impacto_Rio_Grande${sufixo}.xlsx`);
-  }, [camadas, cenario, isCenarioAtivo, infraAtivas, atingidosEmpresas, baseEmpresas, atingidosEducacao, baseEducacao, atingidosSaude, baseSaude, atingidosInfra, baseInfra, atingidosPatrimonio, basePatrimonio]);
-
   // ─── Helpers de layout ────────────────────────────────────────────────────
 
   const possuiInfra = true;
@@ -1720,9 +1697,6 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                     <Info size={12} strokeWidth={2.5} />
                   </button>
                 )}
-                <button onClick={exportarExcel} className="flex items-center gap-1 text-[9px] text-white font-bold px-2 py-1 rounded-md active-press hover-lift cursor-pointer" style={{ backgroundColor: C.primary }}>
-                  <Download size={10} strokeWidth={2.5} />Baixar
-                </button>
                 <button onClick={() => window.print()} className="flex items-center gap-1 text-[9px] bg-slate-200/80 hover:bg-slate-300 text-slate-700 font-bold px-2 py-1 rounded-md active-press hover-lift print:hidden">
                   <Printer size={10} strokeWidth={2.5} />Imprimir
                 </button>
