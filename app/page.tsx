@@ -10,7 +10,7 @@ import Link from "next/link";
 
 import {
   Building2, GraduationCap, HeartPulse, Wrench, Leaf, Sprout, Landmark, Users, Layers,
-  Printer, EyeOff, SlidersHorizontal, PanelLeft, PanelRightClose, TrendingDown, Info, BookOpen,
+  EyeOff, SlidersHorizontal, PanelLeft, PanelRightClose, TrendingDown, Info, BookOpen,
   LayoutGrid, Wallet, Stethoscope, Route,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1697,9 +1697,6 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                     <Info size={12} strokeWidth={2.5} />
                   </button>
                 )}
-                <button onClick={() => window.print()} className="flex items-center gap-1 text-[9px] bg-slate-200/80 hover:bg-slate-300 text-slate-700 font-bold px-2 py-1 rounded-md active-press hover-lift print:hidden">
-                  <Printer size={10} strokeWidth={2.5} />Imprimir
-                </button>
                 <button onClick={() => setShowPainelAnalise(false)} className="flex items-center gap-1 text-[9px] bg-slate-200/80 hover:bg-slate-300 text-slate-700 font-bold px-2 py-1 rounded-md active-press hover-lift print:hidden">
                   <EyeOff size={10} strokeWidth={2.5} />Ocultar
                 </button>
