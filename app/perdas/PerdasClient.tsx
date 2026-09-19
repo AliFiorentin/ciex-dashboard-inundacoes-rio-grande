@@ -84,7 +84,7 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
   const entradas = Object.entries(cenariosEscalados);
   const maxTotal = Math.max(...entradas.map(([, v]) => v.total), 1);
 
-  // Cenário de maior impacto — usado como destaque no Resumo Geral
+  // Cenário de maior impacto, usado como destaque no Resumo Geral
   const destaque = entradas.length
     ? entradas.reduce((acc, cur) => (cur[1].total > acc[1].total ? cur : acc))
     : null;
@@ -108,7 +108,7 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
               Perdas Operacionais
             </h1>
             <p className="text-base opacity-75 font-medium">
-              Estimativa de Perdas Econômicas — Cenários de Inundação em Rio Grande (RS)
+              Estimativa de Perdas Econômicas: Cenários de Inundação em Rio Grande (RS)
             </p>
             <p className="text-[11px] opacity-50 mt-3 font-mono">
               Metodologia DaLA (CEPAL/BID) · Maio 2024 e Setembro 2023
@@ -204,7 +204,7 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
           )}
 
           {/* Gráfico de barras total por cenário */}
-          <SubTitle>Total de Perdas por Cenário — {dias} dias ef.</SubTitle>
+          <SubTitle>Total de Perdas por Cenário: {dias} dias ef.</SubTitle>
           <p>Comparação dos {entradas.length} cenários avaliados para Rio Grande (em R$ milhões).</p>
           <div className="bg-white border border-[#c7d6d9] rounded-xl p-5 shadow-sm mt-3">
             <TotaisBarChart entradas={entradas} maxTotal={maxTotal} />
@@ -220,7 +220,7 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
 
           <Note type="warning">
             Os cenários representam eventos independentes (extensões de mancha de inundação
-            distintas) — os valores não devem ser somados entre si.
+            distintas), os valores não devem ser somados entre si.
           </Note>
         </Section>
 
@@ -278,12 +278,12 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
           <p>
             Comparação do total estimado para <strong>30, 45 e 60 dias efetivos</strong> em
             cada cenário. Perdas agrícolas refletem custo de produção no estágio da cultura
-            no momento do evento — independem da duração.
+            no momento do evento, independem da duração.
           </p>
 
           <div className="bg-white border border-[#c7d6d9] rounded-xl p-5 shadow-sm mt-3">
             <p className="text-[11px] font-black uppercase tracking-wider mb-4" style={{ color: PRIMARY }}>
-              Total por duração — todos os cenários
+              Total por duração: todos os cenários
             </p>
             <SensibChart cenariosOriginais={cenariosOriginais} diasSelecionado={dias} />
           </div>
@@ -334,7 +334,7 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
           <SubTitle>Administração Pública (CNAE 84)</SubTitle>
           <p>
             Os estabelecimentos com CNAE 84 (<em>Administração Pública, Defesa e Seguridade Social</em>)
-            são <strong>incluídos</strong> na estimativa — a interrupção de serviços governamentais
+            são <strong>incluídos</strong> na estimativa: a interrupção de serviços governamentais
             representa perdas reais para a sociedade, conforme a metodologia DaLA (CEPAL, 2024).
           </p>
           <DataTable rows={[
@@ -355,8 +355,8 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
             seguindo abordagem similar à adotada pela CEPAL (2024) em nível estadual via série ARIMA.
             Em Rio Grande, o ICMS de maio/2024 apresentou alta de <strong>+43,8%</strong> em relação
             ao baseline, enquanto o evento de cheia afetou principalmente abril/2024 (−41,4%). O
-            movimento positivo em maio reflete provavelmente a refinaria e o porto — atividades não
-            atingidas pela mancha de inundação — gerando ICMS normalmente, além de demanda emergencial
+            movimento positivo em maio reflete provavelmente a refinaria e o porto (atividades não
+            atingidas pela mancha de inundação), gerando ICMS normalmente, além de demanda emergencial
             de combustíveis. O ICMS municipal, por ser agregado, não permite isolar a parcela gerada
             por estabelecimentos dentro da mancha.
           </p>
@@ -371,9 +371,8 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
 
         <footer className="mt-12 pt-6 border-t border-[#c7d6d9] text-center print:mt-4">
           <p className="text-[11px]" style={{ color: PRIMARY }}>
-            Painel desenvolvido por GPEA/FURG — Centro de Inteligência em Eventos Extremos (CIEX).
+            Painel desenvolvido por GPEA/FURG: Centro de Inteligência em Eventos Extremos (CIEX).
           </p>
-          <p className="text-[11px] mt-0.5" style={{ color: PRIMARY }}>Dados adaptados do projeto BID/GPEA de Avaliação de Impactos Socioeconômicos.</p>
         </footer>
         </main>
       </div>
@@ -407,7 +406,7 @@ function CompositionBar({ v }: { v: CenarioPerdas }) {
   );
 }
 
-// Quebra o rótulo por palavra (sem limite de linhas — nomes de cenário longos,
+// Quebra o rótulo por palavra (sem limite de linhas, nomes de cenário longos,
 // ex. "Nível da Lagoa + Chuva Acumulada – 16/05/2024", precisam de 3+ linhas
 // para não colidir com a coluna vizinha nem cortar a data/valor no final).
 // Quebra também no travessão " – ", isolando a data/valor na última linha.
