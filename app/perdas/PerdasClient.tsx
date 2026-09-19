@@ -93,10 +93,10 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
     <div className="min-h-screen bg-[#eef3f4] text-slate-800 font-sans">
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <header className="text-white px-6 py-10 print:py-5" style={{ backgroundColor: PRIMARY }}>
+      <header className="text-white px-6 py-10" style={{ backgroundColor: PRIMARY }}>
         <div className="max-w-[1200px] mx-auto flex items-start justify-between gap-6">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-5 print:hidden">
+            <div className="flex items-center gap-2 mb-5">
               <Link href="/" className="text-[10px] font-bold text-white/70 hover:text-white transition-colors px-3 py-1 rounded-full border border-white/20 hover:border-white/40 flex items-center gap-1.5">← Dashboard</Link>
               <Link href="/metodologia" className="text-[10px] font-bold text-white/70 hover:text-white transition-colors px-3 py-1 rounded-full border border-white/20 hover:border-white/40 flex items-center gap-1.5">Metodologia →</Link>
             </div>
@@ -119,7 +119,7 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
       </header>
 
       {/* ── Seletor de duração (sticky) ──────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-white/90 border-b border-[#c7d6d9] shadow-sm print:hidden"
+      <div className="sticky top-0 z-30 bg-white/90 border-b border-[#c7d6d9] shadow-sm"
         style={{ backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
         <div className="max-w-[1200px] mx-auto px-6 py-2.5 flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
@@ -151,10 +151,10 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
         </div>
       </div>
 
-      <div className="max-w-[1200px] mx-auto px-6 py-10 print:py-5 flex gap-8 items-start print:block">
+      <div className="max-w-[1200px] mx-auto px-6 py-10 flex gap-8 items-start">
 
         {/* ── Sidebar (Índice fixo) ────────────────────────────────────────────── */}
-        <aside className="hidden lg:block w-52 shrink-0 print:hidden">
+        <aside className="hidden lg:block w-52 shrink-0">
           <div className="sticky top-[56px] flex flex-col gap-3">
             <nav className="bg-white border border-[#c7d6d9] rounded-xl p-4 shadow-sm">
               <p className="text-[10px] font-black uppercase tracking-wider mb-2" style={{ color: PRIMARY }}>Índice</p>
@@ -369,7 +369,7 @@ export function PerdasClient({ dados }: { dados: PerdasData }) {
           </p>
         </Section>
 
-        <footer className="mt-12 pt-6 border-t border-[#c7d6d9] text-center print:mt-4">
+        <footer className="mt-12 pt-6 border-t border-[#c7d6d9] text-center">
           <p className="text-[11px]" style={{ color: PRIMARY }}>
             Painel desenvolvido por GPEA/FURG: Centro de Inteligência em Eventos Extremos (CIEX).
           </p>

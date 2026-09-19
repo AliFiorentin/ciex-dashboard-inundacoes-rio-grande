@@ -1083,7 +1083,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="relative w-screen h-screen font-sans overflow-hidden text-slate-900 print:overflow-visible print:h-auto print:w-full" style={{ backgroundColor: C.bg }}>
+    <div className="relative w-screen h-screen font-sans overflow-hidden text-slate-900" style={{ backgroundColor: C.bg }}>
 
       {/* ── Mapa (fundo) ─────────────────────────────────────────────── */}
       <div className="absolute inset-0 z-0">
@@ -1331,7 +1331,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
         </Map>
 
         {/* Logo CIEX + GPEA — chip ao lado (à esquerda) do grupo de zoom do NavigationControl, centralizado verticalmente com ele */}
-        <div className="absolute bottom-[54px] right-[48px] z-10 pointer-events-none print:hidden">
+        <div className="absolute bottom-[54px] right-[48px] z-10 pointer-events-none">
           <div className="flex flex-col items-center justify-center gap-1 w-[70px] rounded-lg bg-white/95 shadow-md px-1.5 py-2" style={{ border: "2px solid rgba(0,0,0,0.1)" }}>
             <Image src="/CIEX2.png" alt="CIEX" width={62} height={62} className="object-contain" onError={e => (e.currentTarget.style.display = "none")} />
             <div className="w-full h-px bg-black/10" />
@@ -1354,7 +1354,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       )}
 
       {/* ── Legenda + Copyright (lado a lado, alinhados pela base) ──────── */}
-      <div className={`absolute bottom-4 z-10 flex items-end gap-2 print:hidden transition-[left] duration-300 ${showPainelAnalise ? "left-[420px]" : "left-4"}`} style={{ transitionTimingFunction: "var(--ease-out)" }}>
+      <div className={`absolute bottom-4 z-10 flex items-end gap-2 transition-[left] duration-300 ${showPainelAnalise ? "left-[420px]" : "left-4"}`} style={{ transitionTimingFunction: "var(--ease-out)" }}>
         <div className="rounded-xl overflow-hidden" style={glassStyle(0.55)}>
           <button
             onClick={() => setShowLegenda(p => !p)}
@@ -1411,7 +1411,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
 
       {/* ── Aviso metodológico (mancha binária) ─────────────────────────── */}
       {avisoMancha && (
-        <div className="absolute inset-x-0 flex justify-center z-20 print:hidden px-4" style={{ top: panelTop }}>
+        <div className="absolute inset-x-0 flex justify-center z-20 px-4" style={{ top: panelTop }}>
           <div className="flex items-start gap-2 px-3.5 py-2.5 rounded-xl shadow-2xl max-w-md animate-fade-in-up" style={glassStyle(0.75)}>
             <span className="text-sm leading-none shrink-0 mt-0.5">⚠️</span>
             <p className="text-[11px] leading-snug" style={{ color: C.primary }}>{avisoMancha}</p>
@@ -1424,7 +1424,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       )}
 
       {/* ── Header — sempre em 1 linha (scroll horizontal se faltar espaço); painéis seguem panelTop */}
-      <header ref={headerRef} className="absolute top-2 left-4 right-4 px-4 py-1.5 flex flex-nowrap gap-x-4 items-center shadow-2xl z-20 rounded-xl print:hidden overflow-x-auto [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full" style={HEADER_GLASS}>
+      <header ref={headerRef} className="absolute top-2 left-4 right-4 px-4 py-1.5 flex flex-nowrap gap-x-4 items-center shadow-2xl z-20 rounded-xl overflow-x-auto [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full" style={HEADER_GLASS}>
 
         {/* Logos CIEX + GPEA */}
         <div className="flex items-center gap-3 shrink-0 border-r pr-4" style={{ borderColor: "rgba(255,255,255,0.2)" }}>
@@ -1539,7 +1539,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
 
       {/* ── Filtros (direita) ─────────────────────────────────────────── */}
       {showFiltros && (temCamadaTabular || isCenarioAtivo) && (
-        <div className="print:hidden absolute right-4 flex flex-col gap-1.5 p-2.5 rounded-xl shadow-2xl z-10 w-36 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full" style={{ top: panelTop, maxHeight: `calc(100vh - ${panelTop + 20}px)`, ...glassStyle(0.6), ["--tw-scrollbar-thumb" as any]: C.border }}>
+        <div className="absolute right-4 flex flex-col gap-1.5 p-2.5 rounded-xl shadow-2xl z-10 w-36 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full" style={{ top: panelTop, maxHeight: `calc(100vh - ${panelTop + 20}px)`, ...glassStyle(0.6), ["--tw-scrollbar-thumb" as any]: C.border }}>
           <div className="flex justify-between items-center mb-0.5 border-b pb-1.5" style={{ borderColor: C.border }}>
             <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: C.primary }}>Filtros</span>
             <button onClick={() => setShowFiltros(false)} title="Recolher filtros" aria-label="Recolher filtros" className="flex items-center justify-center rounded p-0.5 hover:bg-slate-100 transition-colors" style={{ color: C.muted }}>
@@ -1678,7 +1678,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       )}
       {!showFiltros && (temCamadaTabular || isCenarioAtivo) && (
         <button onClick={() => setShowFiltros(true)}
-          className="absolute right-4 text-xs font-black shadow-2xl px-4 py-2 rounded-xl z-20 active-press hover-lift flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 print:hidden"
+          className="absolute right-4 text-xs font-black shadow-2xl px-4 py-2 rounded-xl z-20 active-press hover-lift flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
           style={{ top: panelTop, ...glassStyle(0.6), color: C.primary }}>
           <SlidersHorizontal size={12} strokeWidth={2.5} />Filtros
         </button>
@@ -1686,18 +1686,18 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
 
       {/* ── Painel de Análise (esquerda flutuante) ─────────────────────── */}
       {showPainelAnalise && (
-        <div className="absolute left-4 bottom-4 w-[400px] flex flex-col rounded-xl shadow-2xl p-4 overflow-hidden z-20 print:static print:w-full print:shadow-none print:max-h-none print:h-auto print:overflow-visible" style={{ top: panelTop, ...glassStyle(0.6), animation: "panelSlideIn 320ms var(--ease-drawer) both" }}>
+        <div className="absolute left-4 bottom-4 w-[400px] flex flex-col rounded-xl shadow-2xl p-4 overflow-hidden z-20" style={{ top: panelTop, ...glassStyle(0.6), animation: "panelSlideIn 320ms var(--ease-drawer) both" }}>
           <div className="mb-3 shrink-0">
             <h2 className="text-base font-black tracking-tight flex items-center justify-between" style={{ color: C.primary }}>
               Painel
               <div className="flex gap-1">
                 {ALTURA_MANCHAS[cenario] && (
                   <button onClick={() => mostrarAvisoMancha(AVISO_MANCHA_BINARIA)} title="Sobre a mancha binária"
-                    className="flex items-center justify-center w-6 h-6 rounded-md active-press hover-lift bg-slate-200/80 hover:bg-slate-300 text-slate-700 print:hidden">
+                    className="flex items-center justify-center w-6 h-6 rounded-md active-press hover-lift bg-slate-200/80 hover:bg-slate-300 text-slate-700">
                     <Info size={12} strokeWidth={2.5} />
                   </button>
                 )}
-                <button onClick={() => setShowPainelAnalise(false)} className="flex items-center gap-1 text-[9px] bg-slate-200/80 hover:bg-slate-300 text-slate-700 font-bold px-2 py-1 rounded-md active-press hover-lift print:hidden">
+                <button onClick={() => setShowPainelAnalise(false)} className="flex items-center gap-1 text-[9px] bg-slate-200/80 hover:bg-slate-300 text-slate-700 font-bold px-2 py-1 rounded-md active-press hover-lift">
                   <EyeOff size={10} strokeWidth={2.5} />Ocultar
                 </button>
               </div>
@@ -1707,7 +1707,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             </p>
           </div>
 
-          <Tabs value={tabAtiva} className="w-full flex-1 flex flex-col overflow-hidden print:overflow-visible print:h-auto">
+          <Tabs value={tabAtiva} className="w-full flex-1 flex flex-col overflow-hidden">
             <div className="flex flex-wrap gap-1.5 shrink-0 pb-3 border-b" style={{ borderColor: C.border }}>
               {([
                 { value: "resumo",      label: "Resumo",      icon: <LayoutGrid    size={11} strokeWidth={2.5} /> },
@@ -2541,7 +2541,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       {/* ── Botão abrir painel ────────────────────────────────────────── */}
       {!showPainelAnalise && (
         <button onClick={() => setShowPainelAnalise(true)}
-          className="absolute left-4 text-xs font-black shadow-2xl px-4 py-2 rounded-xl z-20 active-press hover-lift flex items-center gap-1.5 focus-visible:outline-none print:hidden"
+          className="absolute left-4 text-xs font-black shadow-2xl px-4 py-2 rounded-xl z-20 active-press hover-lift flex items-center gap-1.5 focus-visible:outline-none"
           style={{ top: panelTop, ...glassStyle(0.6), color: C.primary }}>
           <PanelLeft size={12} strokeWidth={2.5} />Abrir Painel
         </button>
