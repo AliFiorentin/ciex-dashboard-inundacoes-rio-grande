@@ -21,7 +21,6 @@ A aplicação é um dashboard de página única construído com **Next.js + Type
 - Painel de análise com abas por setor (Empresas, Saúde, Educação, Patrimônio Histórico, Infraestrutura, Agricultura, Cobertura da Terra)
 - Heatmap de população (WorldPop) exibido como camada de fundo permanente, com KPI de população total e atingida por cenário no topo do painel
 - Filtros por setor econômico (CNAE), dependência administrativa, tipo de estabelecimento e tipologia de patrimônio
-- Impressão do painel via CSS dedicado
 - Permalink via parâmetro `?cenario=<código>` na URL (mais `lat`/`lng`/`zoom` para a posição do mapa)
 
 ---
