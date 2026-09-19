@@ -24,10 +24,10 @@ export function MetodologiaContent() {
   return (
     <div className="min-h-screen bg-[#eef3f4] text-slate-800 font-sans">
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <header className="text-white px-6 py-10 print:py-5" style={{ backgroundColor: PRIMARY }}>
+      <header className="text-white px-6 py-10" style={{ backgroundColor: PRIMARY }}>
         <div className="max-w-[1200px] mx-auto flex items-start justify-between gap-6">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-5 print:hidden">
+            <div className="flex items-center gap-2 mb-5">
               <Link href="/" className="text-[10px] font-bold text-white/70 hover:text-white transition-colors px-3 py-1 rounded-full border border-white/20 hover:border-white/40 flex items-center gap-1.5">← Dashboard</Link>
               <Link href="/perdas" className="text-[10px] font-bold text-white/70 hover:text-white transition-colors px-3 py-1 rounded-full border border-white/20 hover:border-white/40 flex items-center gap-1.5">Perdas Operacionais →</Link>
             </div>
@@ -49,9 +49,9 @@ export function MetodologiaContent() {
         </div>
       </header>
 
-      <div className="max-w-[1200px] mx-auto px-6 py-10 print:py-5 flex gap-8 items-start print:block">
+      <div className="max-w-[1200px] mx-auto px-6 py-10 flex gap-8 items-start">
         {/* ── Sidebar (Índice fixo) ────────────────────────────────────────── */}
-        <aside className="hidden lg:block w-52 shrink-0 print:hidden">
+        <aside className="hidden lg:block w-52 shrink-0">
           <div className="sticky top-6 flex flex-col gap-3">
             <nav className="bg-white border border-[#c7d6d9] rounded-xl p-4 shadow-sm">
               <p className="text-[10px] font-black uppercase tracking-wider mb-2" style={{ color: PRIMARY }}>Índice</p>
@@ -68,7 +68,7 @@ export function MetodologiaContent() {
           </div>
         </aside>
 
-        <main className="flex-1 min-w-0 print:py-0">
+        <main className="flex-1 min-w-0">
 
           {/* ── Contexto ──────────────────────────────────────────────────── */}
           <div className="bg-white border border-[#c7d6d9] rounded-xl p-5 mb-8 shadow-sm">
@@ -713,7 +713,7 @@ export function MetodologiaContent() {
           </Section>
 
           {/* ── Rodapé ──────────────────────────────────────────────────────── */}
-          <footer className="mt-12 pt-6 border-t border-[#c7d6d9] text-center print:mt-4">
+          <footer className="mt-12 pt-6 border-t border-[#c7d6d9] text-center">
             <p className="text-[11px]" style={{ color: PRIMARY }}>
               Painel desenvolvido pelo CIEX em parceria com o GPEA/FURG.
             </p>
