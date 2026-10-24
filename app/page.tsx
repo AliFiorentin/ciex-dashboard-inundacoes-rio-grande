@@ -1406,51 +1406,62 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
       )}
 
       {/* ── Legenda: canto direito, acima da barra de logos e dos controles do mapa ──────── */}
-      <div className="absolute right-2 bottom-[120px] z-10 w-[182px] max-h-[calc(100vh-262px)] flex flex-col justify-end">
-        <div className="rounded-xl overflow-hidden" style={glassStyle(0.55)}>
+      <div className="absolute right-2 bottom-[120px] z-10 w-[182px] flex flex-col justify-end" style={{ maxHeight: filtrosVisiveis ? "calc(100vh - 262px)" : `calc(100vh - ${120 + panelTop + 44}px)` }}>
+        <div className="rounded-xl overflow-hidden flex flex-col min-h-0" style={glassStyle(0.55)}>
           <button
             onClick={() => setShowLegenda(p => !p)}
-            className="w-full flex items-center justify-between gap-3 px-2 py-1.5"
+            className="w-full shrink-0 flex items-center justify-between gap-3 px-2 py-1.5"
             style={{ background: BRAND_GRADIENT }}
           >
             <span className="text-[8px] font-black uppercase tracking-wider text-white">Legenda</span>
             <span className="text-white/80" style={{ fontSize: 8 }}>{showLegenda ? "▼" : "▲"}</span>
           </button>
           {showLegenda && (
-            <div className="flex flex-col gap-1 px-2 py-2 overflow-y-auto">
-              {camadas.includes("Empresas") && renderEmp?.features  && <LegendItem cor={COLORS.empresas} label="Empresas" />}
-              {camadas.includes("Saúde")    && renderSau?.features  && <LegendItem cor={COLORS.saude}    label="Saúde" />}
-              {camadas.includes("Educação") && renderEdu?.features  && <LegendItem cor={COLORS.educacao} label="Educação" />}
-              {camadas.includes("Patrimônio Histórico") && renderPatrimonio?.features && <LegendItem cor={COLORS.patrimonio} label="Patrimônio Histórico" />}
-              {camadas.includes("Infraestrutura") && infraAtivas.map(nome => (
-                <LegendItem key={`infra-${nome}`} cor={INFRA_COLORS[nome] ?? COLORS.infra} label={nome} area={["Quadras","Terrenos"].includes(nome)} />
-              ))}
-              {camadas.includes("Agricultura") && showAgricultura?.features && (
-                Object.entries(AGRI_COLORS).map(([tipo, cor]) => (
-                  <LegendItem key={`agr-${tipo}`} cor={cor} label={tipo} area />
-                ))
-              )}
-              {camadas.includes("Uso e Cobertura da Terra") && showCobertura?.features && (
-                Object.entries(COBERTURA_COLORS).map(([tipo, cor]) => (
-                  <LegendItem key={`cob-${tipo}`} cor={cor} label={tipo} area />
-                ))
-              )}
-              {showHeatmapPopulacao && popData?.["Rio Grande"] && (
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="w-16 h-3 rounded-sm shrink-0" style={{ background: "linear-gradient(to right, #0d0887, #9c179e, #ed7953, #f0f921)" }} />
-                  <div className="flex flex-col leading-none gap-0.5">
-                    <span className="text-[10px] font-medium" style={{ color: C.primary }}>Pop. (hab./pixel)</span>
-                    <span className="text-[8px]" style={{ color: C.muted }}>baixo → alto</span>
+            <div className="flex flex-col gap-2 px-2 py-2 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full">
+              {(() => {
+                const pontos = [
+                  camadas.includes("Empresas") && renderEmp?.features && <LegendItem key="emp" cor={COLORS.empresas} label="Empresas" />,
+                  camadas.includes("Saúde") && renderSau?.features && <LegendItem key="sau" cor={COLORS.saude} label="Saúde" />,
+                  camadas.includes("Educação") && renderEdu?.features && <LegendItem key="edu" cor={COLORS.educacao} label="Educação" />,
+                  camadas.includes("Patrimônio Histórico") && renderPatrimonio?.features && <LegendItem key="pat" cor={COLORS.patrimonio} label="Patrimônio Histórico" />,
+                ].filter(Boolean);
+                const mostraInfra = camadas.includes("Infraestrutura") && infraAtivas.length > 0;
+                const mostraAgri = camadas.includes("Agricultura") && !!showAgricultura?.features;
+                const mostraCob = camadas.includes("Uso e Cobertura da Terra") && !!showCobertura?.features;
+                const mostraPop = showHeatmapPopulacao && !!popData?.["Rio Grande"];
+                const mostraMancha = !!manchaCenario && showMancha;
+                const secoes: { key: string; titulo: string; corpo: React.ReactNode }[] = [
+                  ...(pontos.length > 0 ? [{ key: "pontos", titulo: "Pontos", corpo: pontos }] : []),
+                  ...(mostraInfra ? [{ key: "infra", titulo: "Infraestrutura", corpo: infraAtivas.map(nome => (
+                    <LegendItem key={`infra-${nome}`} cor={INFRA_COLORS[nome] ?? COLORS.infra} label={nome} area={["Quadras","Terrenos"].includes(nome)} />
+                  )) }] : []),
+                  ...(mostraAgri ? [{ key: "agri", titulo: "Agricultura", corpo: Object.entries(AGRI_COLORS).map(([tipo, cor]) => (
+                    <LegendItem key={`agr-${tipo}`} cor={cor} label={tipo} area />
+                  )) }] : []),
+                  ...(mostraCob ? [{ key: "cob", titulo: "Cobertura da Terra", corpo: Object.entries(COBERTURA_COLORS).map(([tipo, cor]) => (
+                    <LegendItem key={`cob-${tipo}`} cor={cor} label={tipo} area />
+                  )) }] : []),
+                  ...(mostraPop ? [{ key: "pop", titulo: "População", corpo: (
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 h-3 rounded-sm shrink-0" style={{ background: "linear-gradient(to right, #0d0887, #9c179e, #ed7953, #f0f921)" }} />
+                      <div className="flex flex-col leading-none gap-0.5">
+                        <span className="text-[10px] font-medium" style={{ color: C.primary }}>Pop. (hab./pixel)</span>
+                        <span className="text-[8px]" style={{ color: C.muted }}>baixo → alto</span>
+                      </div>
+                    </div>
+                  ) }] : []),
+                  ...(mostraMancha ? [{ key: "mancha", titulo: ALTURA_MANCHAS[cenario] ? "Altura da lâmina d'água" : "Cenário", corpo: ALTURA_MANCHAS[cenario]
+                    ? ALTURA_MANCHAS[cenario].legenda.map(({ label, cor }) => <LegendItem key={`altura-${label}`} cor={cor} label={label} area />)
+                    : <LegendItem cor={COLORS.cenario} label={cenario} area /> }] : []),
+                ];
+                if (secoes.length === 0) return <span className="text-[9px]" style={{ color: C.muted }}>Nenhuma camada ativa.</span>;
+                return secoes.map(({ key, titulo, corpo }, i) => (
+                  <div key={key} className={`flex flex-col gap-1 ${i > 0 ? "border-t pt-2" : ""}`} style={{ borderColor: C.border }}>
+                    <div className="text-[8px] font-black uppercase tracking-wider" style={{ color: C.muted }}>{titulo}</div>
+                    {corpo}
                   </div>
-                </div>
-              )}
-              {manchaCenario && showMancha && (
-                ALTURA_MANCHAS[cenario]
-                  ? ALTURA_MANCHAS[cenario].legenda.map(({ label, cor }) => (
-                      <LegendItem key={`altura-${label}`} cor={cor} label={label} area />
-                    ))
-                  : <LegendItem cor={COLORS.cenario} label={cenario} area />
-              )}
+                ));
+              })()}
             </div>
           )}
         </div>
@@ -2655,7 +2666,7 @@ function LegendItem({ cor, label, area }: { cor: string; label: string; area?: b
       {area
         ? <div className="w-3 h-2.5 rounded-sm border shrink-0" style={{ borderColor: cor, backgroundColor: `${cor}30` }} />
         : <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cor }} />}
-      <span className="text-[9px] text-slate-700 font-medium leading-none truncate max-w-[110px]">{label}</span>
+      <span className="text-[9px] text-slate-700 font-medium leading-tight truncate min-w-0" title={label}>{label}</span>
     </div>
   );
 }
