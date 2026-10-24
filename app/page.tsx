@@ -11,7 +11,7 @@ import Link from "next/link";
 import {
   Building2, GraduationCap, HeartPulse, Wrench, Leaf, Sprout, Landmark, Users, Layers,
   EyeOff, SlidersHorizontal, PanelLeft, PanelRightClose, TrendingDown, Info, BookOpen,
-  LayoutGrid, Wallet, Stethoscope, Route,
+  LayoutGrid, Stethoscope, LandPlot,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DonutChart } from "@/components/ui/donut-chart";
+import { FitHeight } from "@/components/FitHeight";
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -90,6 +91,10 @@ const glassStyle = (opacity = 0.55, tint?: string) => ({
   border: tint ? `0.5px solid rgba(255,255,255,0.18)` : "0.5px solid rgba(255,255,255,0.6)",
   boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
 } as const);
+
+// Fundo padrão de TODOS os cards/gráficos/elementos do Painel (translúcido, igual ao BID)
+const PANEL_CARD_BG = "rgba(255,255,255,0.55)";
+const PANEL_TRACK_BG = "rgba(30,64,74,0.10)";
 
 // Tipografia fluida do header (clamp: min, vw, max) — evita quebra em notebooks pequenos
 const HEADER_FLUID = {
@@ -1082,8 +1087,55 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
+  // Filtros: o painel nasce aberto (descobribilidade) e se recolhe sozinho uma vez, a menos que a pessoa
+  // interaja antes. Trocar de cenário reabre e rearma o recolhimento. Os selects de dados ficam em "Filtrar dados".
+  const [abertoFiltros, setAbertoFiltros] = useState(false);
+  const filtrosInteragiu = useRef(false);
+  const filtrosJaRecolheu = useRef(false);
+  const primeiraSelecao = useRef(true);
+  useEffect(() => {
+    if (primeiraSelecao.current) { primeiraSelecao.current = false; return; }
+    filtrosInteragiu.current = false;
+    filtrosJaRecolheu.current = false;
+    setShowFiltros(true);
+  }, [cenario]);
+  const filtrosVisiveis = showFiltros && (temCamadaTabular || isCenarioAtivo);
+  useEffect(() => {
+    if (!filtrosVisiveis || filtrosJaRecolheu.current) return;
+    const t = setTimeout(() => {
+      filtrosJaRecolheu.current = true;
+      if (!filtrosInteragiu.current) setShowFiltros(false);
+    }, 6000);
+    return () => clearTimeout(t);
+  }, [filtrosVisiveis]);
+  const nFiltrosAtivos = [filtroSetor !== "(todos)", filtroDep !== "(todas)", filtroTipo !== "(todas)", filtroTipologia !== "(todas)"].filter(Boolean).length;
+  const temFiltroDados = camadas.includes("Empresas") || camadas.includes("Educação") || camadas.includes("Saúde") || camadas.includes("Patrimônio Histórico");
+
   return (
     <div className="relative w-screen h-screen font-sans overflow-hidden text-slate-900" style={{ backgroundColor: C.bg }}>
+
+      {/* ── Aviso de tamanho: abaixo de 1150 x 650 px mostra só esta tela (sem rolagem/escala) ── */}
+      <div className="hidden telefone:flex fixed inset-0 z-[100] flex-col items-center justify-center gap-6 px-8 text-center bg-white">
+        <div className="flex items-center gap-3">
+          <Image src="/CIEX.png" alt="CIEX" width={120} height={42} className="h-10 w-auto object-contain" style={{ filter: "brightness(0) saturate(100%)", opacity: 0.8 }} onError={e => (e.currentTarget.style.display = "none")} />
+          <Image src="/GPEA.png" alt="GPEA" width={120} height={36} className="h-9 w-auto object-contain" onError={e => (e.currentTarget.style.display = "none")} />
+        </div>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-xl font-black leading-tight" style={{ color: C.primary }}>Painel de Vulnerabilidade Econômica</h1>
+          <p className="text-sm text-slate-500">Rio Grande, RS</p>
+        </div>
+        <div className="rounded-2xl px-6 py-5 flex flex-col items-center gap-3 max-w-sm" style={{ backgroundColor: "#f1f5f4", border: "1px solid #c9d3d1" }}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+          </svg>
+          <p className="font-bold text-sm" style={{ color: C.primary }}>Tamanho de tela insuficiente</p>
+          <p className="text-slate-500 text-xs leading-relaxed">
+            O painel precisa de uma janela de, no mínimo, <strong>1150 × 650 px</strong>. Aumente a janela do navegador ou acesse em um computador.
+          </p>
+        </div>
+      </div>
 
       {/* ── Mapa (fundo) ─────────────────────────────────────────────── */}
       <div className="absolute inset-0 z-0">
@@ -1330,12 +1382,12 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
           </Source>
         </Map>
 
-        {/* Logo CIEX + GPEA — chip ao lado (à esquerda) do grupo de zoom do NavigationControl, centralizado verticalmente com ele */}
-        <div className="absolute bottom-[54px] right-[48px] z-10 pointer-events-none">
-          <div className="flex flex-col items-center justify-center gap-1 w-[70px] rounded-lg bg-white/95 shadow-md px-1.5 py-2" style={{ border: "2px solid rgba(0,0,0,0.1)" }}>
-            <Image src="/CIEX2.png" alt="CIEX" width={62} height={62} className="object-contain" onError={e => (e.currentTarget.style.display = "none")} />
-            <div className="w-full h-px bg-black/10" />
-            <Image src="/GPEA.png" alt="GPEA" width={62} height={20} className="object-contain" onError={e => (e.currentTarget.style.display = "none")} />
+        {/* Logo CIEX + GPEA — barra com a altura do grupo de zoom (72 px), alinhada a ele, à esquerda do zoom, na base; a legenda se apoia acima dela */}
+        <div className="absolute bottom-[40px] right-[40px] z-10 pointer-events-none">
+          <div className="flex h-[72px] w-[150px] items-center justify-center gap-2 rounded-md bg-white/90 shadow-sm px-2" style={{ border: "2px solid rgba(0,0,0,0.1)" }}>
+            <Image src="/CIEX2.png" alt="CIEX" width={58} height={58} className="object-contain" style={{ width: "auto", height: "auto", maxWidth: "58px", maxHeight: "58px" }} onError={e => (e.currentTarget.style.display = "none")} />
+            <div className="h-10 w-px bg-black/10" />
+            <Image src="/GPEA.png" alt="GPEA" width={80} height={26} className="object-contain" style={{ width: "auto", height: "auto", maxWidth: "56px", maxHeight: "30px" }} onError={e => (e.currentTarget.style.display = "none")} />
           </div>
         </div>
       </div>
@@ -1353,19 +1405,19 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
         </div>
       )}
 
-      {/* ── Legenda + Copyright (lado a lado, alinhados pela base) ──────── */}
-      <div className={`absolute bottom-4 z-10 flex items-end gap-2 transition-[left] duration-300 ${showPainelAnalise ? "left-[420px]" : "left-4"}`} style={{ transitionTimingFunction: "var(--ease-out)" }}>
+      {/* ── Legenda: canto direito, acima da barra de logos e dos controles do mapa ──────── */}
+      <div className="absolute right-2 bottom-[120px] z-10 w-[182px] max-h-[calc(100vh-262px)] flex flex-col justify-end">
         <div className="rounded-xl overflow-hidden" style={glassStyle(0.55)}>
           <button
             onClick={() => setShowLegenda(p => !p)}
-            className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5"
+            className="w-full flex items-center justify-between gap-3 px-2 py-1.5"
             style={{ background: BRAND_GRADIENT }}
           >
             <span className="text-[8px] font-black uppercase tracking-wider text-white">Legenda</span>
-            <span className="text-white/80" style={{ fontSize: 7 }}>{showLegenda ? "▼" : "▲"}</span>
+            <span className="text-white/80" style={{ fontSize: 8 }}>{showLegenda ? "▼" : "▲"}</span>
           </button>
           {showLegenda && (
-            <div className="flex flex-col gap-1 px-2 pt-1.5 pb-2">
+            <div className="flex flex-col gap-1 px-2 py-2 overflow-y-auto">
               {camadas.includes("Empresas") && renderEmp?.features  && <LegendItem cor={COLORS.empresas} label="Empresas" />}
               {camadas.includes("Saúde")    && renderSau?.features  && <LegendItem cor={COLORS.saude}    label="Saúde" />}
               {camadas.includes("Educação") && renderEdu?.features  && <LegendItem cor={COLORS.educacao} label="Educação" />}
@@ -1402,8 +1454,11 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             </div>
           )}
         </div>
+      </div>
 
-        <div className="px-2.5 py-1.5 rounded-xl select-none leading-none text-center pointer-events-none" style={glassStyle(0.55)}>
+      {/* ── Copyright: base, centralizado na área livre do mapa (entre o painel e a atribuição) ── */}
+      <div className={`absolute bottom-4 right-[330px] z-10 flex items-end justify-center pointer-events-none transition-[left] duration-300 ${showPainelAnalise ? "left-[397px]" : "left-0"}`} style={{ transitionTimingFunction: "var(--ease-out)" }}>
+        <div className="px-3 py-1 rounded-xl select-none leading-none text-center shrink-0 pointer-events-none" style={glassStyle(0.55)}>
           <span className="text-[9px] font-black uppercase tracking-wider" style={{ color: C.muted }}>© GPEa — Grupo de Pesquisa em Economia Azul</span>
           <span className="text-[9px]" style={{ color: C.muted }}> | Alisson T. G. Fiorentin</span>
         </div>
@@ -1423,24 +1478,44 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
         </div>
       )}
 
-      {/* ── Header — sempre em 1 linha (scroll horizontal se faltar espaço); painéis seguem panelTop */}
-      <header ref={headerRef} className="absolute top-2 left-4 right-4 px-4 py-1.5 flex flex-nowrap gap-x-4 items-center shadow-2xl z-20 rounded-xl overflow-x-auto [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full" style={HEADER_GLASS}>
+      {/* ── Header — flex-wrap com tamanhos fluidos (.dash-header); em < 1400 px os botões de camada viram grade 2x2; painéis seguem panelTop */}
+      <header ref={headerRef} className="dash-header absolute top-1.5 left-3 right-3 flex flex-wrap items-center z-20 rounded-xl shadow-2xl" style={{ ...HEADER_GLASS, paddingInline: "0.75rem", paddingBlock: "0.25rem", gap: "var(--section-gap)" }}>
 
-        {/* Logos CIEX + GPEA */}
-        <div className="flex items-center gap-3 shrink-0 border-r pr-4" style={{ borderColor: "rgba(255,255,255,0.2)" }}>
-          <Image src="/CIEX.png" alt="CIEX" width={80} height={28} className="object-contain" style={{ height: HEADER_FLUID.logoH, width: "auto" }} onError={e => (e.currentTarget.style.display = "none")} />
-          <Image src="/GPEA.png" alt="GPEA" width={80} height={24} className="object-contain" style={{ height: HEADER_FLUID.logoHSecondary, width: "auto" }} onError={e => (e.currentTarget.style.display = "none")} />
-          <div className="pl-3 flex flex-col justify-center">
-            <h1 className="font-black leading-tight text-white whitespace-nowrap" style={{ fontSize: HEADER_FLUID.titleSize }}>Painel de Vulnerabilidade Econômica</h1>
-            <span className="font-medium tracking-wider uppercase text-white/70" style={{ fontSize: HEADER_FLUID.subtitleSize }}>Rio Grande, RS</span>
+        {/* Logos CIEX + GPEA + título */}
+        <div className="flex items-center gap-3 shrink-0 border-r" style={{ borderColor: "rgba(255,255,255,0.2)", paddingRight: "var(--section-gap)" }}>
+          <Image src="/CIEX.png" alt="CIEX" width={80} height={28} className="object-contain" style={{ height: "var(--logo-h)", width: "auto" }} onError={e => (e.currentTarget.style.display = "none")} />
+          <Image src="/GPEA.png" alt="GPEA" width={80} height={24} className="object-contain" style={{ height: "var(--logo-h2)", width: "auto" }} onError={e => (e.currentTarget.style.display = "none")} />
+          <div className="pl-3 flex flex-col justify-center min-w-0" style={{ maxWidth: "clamp(130px, 15vw, 260px)" }}>
+            <h1 className="font-black leading-tight text-white" style={{ fontSize: HEADER_FLUID.titleSize }}>Painel de Vulnerabilidade Econômica</h1>
+            <span className="font-medium tracking-wider uppercase text-white/70 whitespace-nowrap" style={{ fontSize: HEADER_FLUID.subtitleSize }}>Rio Grande, RS</span>
           </div>
         </div>
 
+        {/* Perdas Operacionais / Metodologia — empilhados, empurram o resto para a direita (mr-auto) */}
+        <div className="flex flex-col gap-0.5 shrink-0 mr-auto">
+          <Link
+            href="/perdas"
+            className="px-2.5 flex items-center gap-1.5 rounded-full font-black active-press hover-lift whitespace-nowrap text-white/90 border border-white/25 bg-white/10 hover:bg-white/20 focus-visible:outline-none"
+            style={{ fontSize: "var(--btn-size)", height: "var(--btn-h)" }}
+            title="Ver perdas operacionais estimadas"
+          >
+            <TrendingDown size={11} strokeWidth={2.5} />Perdas Operacionais
+          </Link>
+          <Link
+            href="/metodologia"
+            className="px-2.5 flex items-center gap-1.5 rounded-full font-black active-press hover-lift whitespace-nowrap text-white/90 border border-white/25 bg-white/10 hover:bg-white/20 focus-visible:outline-none"
+            style={{ fontSize: "var(--btn-size)", height: "var(--btn-h)" }}
+            title="Ver metodologia do painel"
+          >
+            <BookOpen size={11} strokeWidth={2.5} />Metodologia
+          </Link>
+        </div>
+
         {/* Cenário */}
-        <div className="flex flex-col gap-0 shrink-0 border-r pr-4" style={{ borderColor: "rgba(255,255,255,0.2)" }}>
-          <label className="font-bold uppercase tracking-wider text-white/70" style={{ fontSize: HEADER_FLUID.selectLabelSize }}>Cenário de Inundação</label>
+        <div className="flex flex-col gap-0 shrink-0 border-r" style={{ borderColor: "rgba(255,255,255,0.2)", paddingRight: "var(--section-gap)", width: "calc(var(--select-w) + var(--section-gap))" }}>
+          <label className="font-bold uppercase tracking-wider text-white/70 whitespace-nowrap" style={{ fontSize: "var(--select-label)" }}>Cenário de Inundação</label>
           <Select value={cenario} onValueChange={setCenario}>
-            <SelectTrigger className="h-7 text-white border-white/20 w-44" style={{ backgroundColor: `${C.field}cc`, fontSize: HEADER_FLUID.selectTriggerSize }}><SelectValue placeholder="(nenhum)" /></SelectTrigger>
+            <SelectTrigger aria-label="Cenário de inundação" className="text-white border-white/20 w-full min-w-0" style={{ backgroundColor: `${C.field}cc`, fontSize: "var(--select-trigger)", height: "var(--select-h)" }}><SelectValue placeholder="(nenhum)" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="(nenhum)">(Ver Total)</SelectItem>
               {CENARIOS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -1448,37 +1523,20 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
           </Select>
         </div>
 
-        <div className="flex flex-col gap-1 shrink-0">
-          <Link
-            href="/perdas"
-            className="h-5 px-2.5 flex items-center gap-1.5 rounded-full text-[9px] font-black active-press hover-lift whitespace-nowrap text-white/90 border border-white/25 bg-white/10 hover:bg-white/20 focus-visible:outline-none"
-            title="Ver perdas operacionais estimadas"
-          >
-            <TrendingDown size={11} strokeWidth={2.5} />Perdas Operacionais
-          </Link>
-
-          <Link
-            href="/metodologia"
-            className="h-5 px-2.5 flex items-center gap-1.5 rounded-full text-[9px] font-black active-press hover-lift whitespace-nowrap text-white/90 border border-white/25 bg-white/10 hover:bg-white/20 focus-visible:outline-none"
-            title="Ver metodologia do painel"
-          >
-            <BookOpen size={11} strokeWidth={2.5} />Metodologia
-          </Link>
-        </div>
-
-        {/* Camadas — inline em telas largas (≥xl); a linha inteira do header rola horizontalmente se faltar espaço */}
-        <div className="hidden xl:flex flex-nowrap gap-1 items-center shrink-0">
+        {/* Camadas — 1 linha em telas largas; grade 2 colunas abaixo de 1400 px (evita botões na 2ª linha com espaço sobrando) */}
+        <div className="flex items-center max-[1399px]:grid max-[1399px]:grid-cols-2 max-[1399px]:shrink-0" style={{ gap: "var(--layer-gap)" }}>
           {[
-            { id: "Empresas",                 label: "Empresas",    icon: <Building2 size={12} strokeWidth={2.5} />,     activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
-            { id: "Saúde",                    label: "Saúde",       icon: <HeartPulse size={12} strokeWidth={2.5} />,    activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
-            { id: "Educação",                 label: "Educação",    icon: <GraduationCap size={12} strokeWidth={2.5} />, activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
-            { id: "Agricultura",              label: "Agricultura", icon: <Sprout size={12} strokeWidth={2.5} />,        activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
-            { id: "Uso e Cobertura da Terra", label: "Cobertura",   icon: <Leaf size={12} strokeWidth={2.5} />,          activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
-            { id: "Patrimônio Histórico",     label: "Patrimônio",  icon: <Landmark size={12} strokeWidth={2.5} />,      activeClass: "bg-white text-[#1E404A] border-[#dce1d8]", ringClass: "focus-visible:ring-[#1E404A]/40" },
-          ].map(({ id, label, icon, activeClass, ringClass }) => (
+            { id: "Empresas",                 label: "Empresas",    icon: <Building2 size={11} strokeWidth={2.5} /> },
+            { id: "Saúde",                    label: "Saúde",       icon: <HeartPulse size={11} strokeWidth={2.5} /> },
+            { id: "Educação",                 label: "Educação",    icon: <GraduationCap size={11} strokeWidth={2.5} /> },
+            { id: "Agricultura",              label: "Agricultura", icon: <Sprout size={11} strokeWidth={2.5} /> },
+            { id: "Uso e Cobertura da Terra", label: "Cobertura",   icon: <Leaf size={11} strokeWidth={2.5} /> },
+            { id: "Patrimônio Histórico",     label: "Patrimônio",  icon: <Landmark size={11} strokeWidth={2.5} /> },
+          ].map(({ id, label, icon }) => (
             <button key={id} onClick={() => toggleCamada(id)}
-              className={`h-6 2xl:h-7 px-1.5 2xl:px-2 rounded-md text-[9px] 2xl:text-[10px] font-black active-press hover-lift flex items-center gap-1 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${ringClass} ${camadas.includes(id) ? activeClass : "text-white/80 border-white/20 hover:bg-white/10"}`}
-              style={camadas.includes(id) ? {} : { backgroundColor: C.field }}>
+              aria-pressed={camadas.includes(id)}
+              className={`rounded-md font-black active-press hover-lift flex items-center justify-center gap-1 whitespace-nowrap shrink-0 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-[#1E404A]/40 max-[1399px]:w-full ${camadas.includes(id) ? "bg-white text-[#1E404A] border-[#dce1d8]" : "text-white/80 border-white/20 hover:bg-white/10"}`}
+              style={{ fontSize: "var(--btn-size)", height: "var(--btn-h)", paddingInline: "var(--btn-px)", ...(camadas.includes(id) ? {} : { backgroundColor: C.field }) }}>
               {icon}{label}
             </button>
           ))}
@@ -1486,10 +1544,10 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
           {/* Infraestrutura dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger disabled={!possuiInfra}
-              className={`h-6 2xl:h-7 px-1.5 2xl:px-2 flex items-center justify-between gap-1.5 rounded-md text-[9px] 2xl:text-[10px] font-black active-press hover-lift whitespace-nowrap shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${camadas.includes("Infraestrutura") && infraAtivas.length > 0 ? "bg-white text-[#1E404A] border-[#dce1d8]" : "text-white/80 border-white/20 hover:bg-white/10"}`}
-              style={camadas.includes("Infraestrutura") && infraAtivas.length > 0 ? {} : { backgroundColor: C.field }}>
-              <span className="flex items-center gap-1"><Wrench size={12} strokeWidth={2.5} />Infraestrutura {infraAtivas.length > 0 && `(${infraAtivas.length})`}</span>
-              <span className="text-[8px] opacity-70">▼</span>
+              className={`flex items-center justify-center gap-1.5 rounded-md font-black active-press hover-lift whitespace-nowrap shrink-0 border disabled:opacity-50 disabled:cursor-not-allowed max-[1399px]:w-full max-[1399px]:col-span-2 ${camadas.includes("Infraestrutura") && infraAtivas.length > 0 ? "bg-white text-[#1E404A] border-[#dce1d8]" : "text-white/80 border-white/20 hover:bg-white/10"}`}
+              style={{ fontSize: "var(--btn-size)", height: "var(--btn-h)", paddingInline: "var(--btn-px)", ...(camadas.includes("Infraestrutura") && infraAtivas.length > 0 ? {} : { backgroundColor: C.field }) }}>
+              <span className="flex items-center gap-1"><Wrench size={11} strokeWidth={2.5} />Infraestrutura {infraAtivas.length > 0 && `(${infraAtivas.length})`}</span>
+              <span className="text-[7px] opacity-70">▼</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end">
               <button onClick={toggleMenuInfra} className="w-full text-left text-xs font-bold px-2 py-1 mb-1 text-slate-500 hover:bg-slate-100 border-b border-slate-200/60 transition-colors duration-150 focus-visible:outline-none">
@@ -1503,177 +1561,128 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-
-        {/* Camadas — colapsadas em um único menu em telas estreitas (<xl) */}
-        <div className="flex xl:hidden">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className="h-8 px-3 flex items-center gap-1.5 rounded-md text-xs font-black active-press hover-lift whitespace-nowrap text-white/90 border-white/20 hover:bg-white/10 focus-visible:outline-none"
-              style={{ backgroundColor: C.field }}>
-              <Layers size={13} strokeWidth={2.5} />Camadas
-              <span className="text-[8px] opacity-70">▼</span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-52" align="start">
-              {[
-                { id: "Empresas",                 label: "Empresas" },
-                { id: "Saúde",                    label: "Saúde" },
-                { id: "Educação",                 label: "Educação" },
-                { id: "Agricultura",              label: "Agricultura" },
-                { id: "Uso e Cobertura da Terra", label: "Cobertura" },
-                { id: "Patrimônio Histórico",     label: "Patrimônio" },
-              ].map(({ id, label }) => (
-                <DropdownMenuCheckboxItem key={id} checked={camadas.includes(id)} onCheckedChange={() => toggleCamada(id)} className="text-xs hover:bg-slate-100">
-                  {label}
-                </DropdownMenuCheckboxItem>
-              ))}
-              <div className="text-[9px] font-bold px-2 pt-1.5 pb-1 mt-1 text-slate-400 uppercase tracking-wider border-t border-slate-200/60">Infraestrutura</div>
-              {INFRA_LAYERS.map(nome => (
-                <DropdownMenuCheckboxItem key={nome} checked={infraAtivas.includes(nome)} onCheckedChange={() => toggleInfra(nome)} className="text-xs hover:bg-slate-100">
-                  {nome}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </header>
 
-      {/* ── Filtros (direita) ─────────────────────────────────────────── */}
+      {/* ── Filtros (direita) — camadas/heatmaps como chips; selects de dados recolhidos em "Filtrar dados" ── */}
       {showFiltros && (temCamadaTabular || isCenarioAtivo) && (
-        <div className="absolute right-4 flex flex-col gap-1.5 p-2.5 rounded-xl shadow-2xl z-10 w-36 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full" style={{ top: panelTop, maxHeight: `calc(100vh - ${panelTop + 20}px)`, ...glassStyle(0.6), ["--tw-scrollbar-thumb" as any]: C.border }}>
-          <div className="flex justify-between items-center mb-0.5 border-b pb-1.5" style={{ borderColor: C.border }}>
-            <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: C.primary }}>Filtros</span>
+        <div
+          onPointerDown={() => { filtrosInteragiu.current = true; }}
+          onPointerEnter={() => { filtrosInteragiu.current = true; }}
+          onFocus={() => { filtrosInteragiu.current = true; }}
+          className="absolute right-4 flex flex-col gap-1.5 p-2 rounded-xl shadow-2xl z-10 w-44 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full"
+          style={{ top: panelTop, maxHeight: `calc(100vh - ${panelTop + 20}px)`, ...glassStyle(0.6) }}
+        >
+          <div className="flex justify-between items-center border-b pb-1" style={{ borderColor: C.border }}>
+            <span className="text-[9px] font-black uppercase tracking-wider" style={{ color: C.primary }}>Filtros de Mapa</span>
             <button onClick={() => setShowFiltros(false)} title="Recolher filtros" aria-label="Recolher filtros" className="flex items-center justify-center rounded p-0.5 hover:bg-slate-100 transition-colors" style={{ color: C.muted }}>
-              <PanelRightClose size={14} strokeWidth={2.5} />
+              <PanelRightClose size={13} strokeWidth={2.5} />
             </button>
           </div>
 
-          {camadas.includes("Empresas") && (
-            <div className="flex flex-col gap-0.5 w-full overflow-hidden shrink-0">
-              <label className="text-[8px] font-bold text-blue-700 uppercase tracking-wider">Setor (Empresas)</label>
-              <Select value={filtroSetor} onValueChange={setFiltroSetor}>
-                <SelectTrigger className="h-6 border-blue-200/60 bg-blue-50/50 text-[10px] w-full [&>span]:truncate"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="(todos)">(todos)</SelectItem>
-                  {setoresUnicos.map(s => <SelectItem key={s} value={s}>{normalizeSetor(s)}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          {camadas.includes("Educação") && (
-            <div className="flex flex-col gap-0.5 w-full overflow-hidden shrink-0">
-              <label className="text-[8px] font-bold text-green-700 uppercase tracking-wider">Dependência (Escolas)</label>
-              <Select value={filtroDep} onValueChange={setFiltroDep}>
-                <SelectTrigger className="h-6 border-green-200/60 bg-green-50/50 text-[10px] w-full [&>span]:truncate"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="(todas)">(todas)</SelectItem>
-                  {depsUnicas.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          {camadas.includes("Saúde") && (
-            <div className="flex flex-col gap-0.5 w-full overflow-hidden shrink-0">
-              <label className="text-[8px] font-bold text-red-700 uppercase tracking-wider">Unidade (Saúde)</label>
-              <Select value={filtroTipo} onValueChange={setFiltroTipo}>
-                <SelectTrigger className="h-6 border-red-200/60 bg-red-50/50 text-[10px] w-full [&>span]:truncate"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="(todas)">(todas)</SelectItem>
-                  {tiposUnicos.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          {camadas.includes("Patrimônio Histórico") && (
-            <div className="flex flex-col gap-0.5 w-full overflow-hidden shrink-0">
-              <label className="text-[8px] font-bold text-amber-700 uppercase tracking-wider">Tipologia (Patrimônio)</label>
-              <Select value={filtroTipologia} onValueChange={setFiltroTipologia}>
-                <SelectTrigger className="h-6 border-amber-200/60 bg-amber-50/50 text-[10px] w-full [&>span]:truncate"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="(todas)">(todas)</SelectItem>
-                  {tipologiasUnicas.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          {isCenarioAtivo && (
-            <div className="flex flex-col gap-0.5 w-full shrink-0">
-              <label className="text-[8px] font-bold uppercase tracking-wider" style={{ color: COLORS.cenario }}>Mancha de Inundação</label>
+          {(() => {
+            type Chip = { id: string; label: string; cor: string; on: boolean; toggle: () => void };
+            const chip = (c: Chip) => (
               <button
-                onClick={() => setShowMancha(p => !p)}
-                className="h-6 w-full rounded text-[10px] font-bold border transition-colors duration-150"
-                style={{
-                  backgroundColor: showMancha ? `${COLORS.cenario}20` : "transparent",
-                  borderColor: showMancha ? COLORS.cenario : C.border,
-                  color: showMancha ? COLORS.cenario : C.muted,
-                }}
+                key={c.id}
+                onClick={c.toggle}
+                aria-pressed={c.on}
+                className="h-6 min-w-0 flex items-center gap-1 px-1.5 rounded-full text-[9px] font-bold border transition-colors duration-150"
+                style={{ backgroundColor: c.on ? `${c.cor}20` : "transparent", borderColor: c.on ? c.cor : "#cbd5e1", color: c.on ? c.cor : "#64748b" }}
               >
-                {showMancha ? "Visível" : "Oculta"}
+                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: c.on ? c.cor : "#cbd5e1" }} />
+                <span className="truncate">{c.label}</span>
               </button>
-            </div>
-          )}
+            );
+            const titulo = (txt: string) => <div className="text-[8px] font-black text-slate-500 uppercase tracking-wider">{txt}</div>;
+            const heatmaps: Chip[] = [
+              { id: "pop", label: "População", cor: "#7e22ce", on: showHeatmapPopulacao, toggle: () => setShowHeatmapPopulacao(p => !p) },
+              { id: "emp", label: "Empresas",  cor: "#1d4ed8", on: showHeatmapEmpresas,  toggle: () => setShowHeatmapEmpresas(p => !p) },
+              { id: "sau", label: "Saúde",     cor: "#b91c1c", on: showHeatmapSaude,     toggle: () => setShowHeatmapSaude(p => !p) },
+              { id: "edu", label: "Educação",  cor: "#15803d", on: showHeatmapEducacao,  toggle: () => setShowHeatmapEducacao(p => !p) },
+            ];
+            return (
+              <>
+                {isCenarioAtivo && (
+                  <div className="flex flex-col gap-1">
+                    {titulo("Camadas")}
+                    <div className="grid grid-cols-2 gap-1">
+                      {chip({ id: "mancha", label: "Mancha", cor: COLORS.cenario, on: showMancha, toggle: () => setShowMancha(p => !p) })}
+                    </div>
+                  </div>
+                )}
 
-          {/* Heatmaps Toggles */}
-          <div className="flex flex-col gap-1 w-full shrink-0 mt-2 border-t pt-2" style={{ borderColor: C.border }}>
-            <div className="flex flex-col gap-0.5 w-full">
-              <label className="text-[8px] font-bold text-purple-700 uppercase tracking-wider">Heatmap População</label>
-              <button
-                onClick={() => setShowHeatmapPopulacao(p => !p)}
-                className="h-6 w-full rounded text-[10px] font-bold border transition-colors flex items-center justify-center"
-                style={{
-                  backgroundColor: showHeatmapPopulacao ? "#7e22ce20" : "transparent",
-                  borderColor: showHeatmapPopulacao ? "#7e22ce" : "#cbd5e1",
-                  color: showHeatmapPopulacao ? "#7e22ce" : "#64748b"
-                }}
-              >
-                {showHeatmapPopulacao ? "Visível" : "Oculto"}
-              </button>
-            </div>
+                <div className="flex flex-col gap-1">
+                  {titulo("Heatmaps")}
+                  <div className="grid grid-cols-2 gap-1">{heatmaps.map(chip)}</div>
+                </div>
+              </>
+            );
+          })()}
 
-            <div className="flex flex-col gap-0.5 w-full">
-              <label className="text-[8px] font-bold text-blue-700 uppercase tracking-wider">Heatmap Empresas</label>
+          {temFiltroDados && (
+            <div className="flex flex-col gap-1 border-t pt-1" style={{ borderColor: C.border }}>
               <button
-                onClick={() => setShowHeatmapEmpresas(p => !p)}
-                className="h-6 w-full rounded text-[10px] font-bold border transition-colors flex items-center justify-center"
-                style={{
-                  backgroundColor: showHeatmapEmpresas ? "#1d4ed820" : "transparent",
-                  borderColor: showHeatmapEmpresas ? "#1d4ed8" : "#cbd5e1",
-                  color: showHeatmapEmpresas ? "#1d4ed8" : "#64748b"
-                }}
+                onClick={() => setAbertoFiltros(v => !v)}
+                aria-expanded={abertoFiltros}
+                className="flex items-center justify-between text-[8px] font-black text-slate-500 uppercase tracking-wider"
               >
-                {showHeatmapEmpresas ? "Visível" : "Oculto"}
+                <span>Filtrar dados{nFiltrosAtivos > 0 && <span className="ml-1 rounded-full px-1.5 py-px text-white" style={{ backgroundColor: C.primary }}>{nFiltrosAtivos}</span>}</span>
+                <span className="opacity-70">{abertoFiltros ? "▲" : "▼"}</span>
               </button>
+              {abertoFiltros && (
+                <>
+                  {camadas.includes("Empresas") && (
+                    <div className="flex flex-col gap-0.5 w-full overflow-hidden shrink-0">
+                      <label className="text-[8px] font-bold text-blue-700 uppercase tracking-wider">Setor (Empresas)</label>
+                      <Select value={filtroSetor} onValueChange={setFiltroSetor}>
+                        <SelectTrigger className="h-6 border-blue-200/60 bg-blue-50/50 text-[10px] w-full [&>span]:truncate"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="(todos)">(todos)</SelectItem>
+                          {setoresUnicos.map(s => <SelectItem key={s} value={s}>{normalizeSetor(s)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {camadas.includes("Educação") && (
+                    <div className="flex flex-col gap-0.5 w-full overflow-hidden shrink-0">
+                      <label className="text-[8px] font-bold text-green-700 uppercase tracking-wider">Dependência (Escolas)</label>
+                      <Select value={filtroDep} onValueChange={setFiltroDep}>
+                        <SelectTrigger className="h-6 border-green-200/60 bg-green-50/50 text-[10px] w-full [&>span]:truncate"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="(todas)">(todas)</SelectItem>
+                          {depsUnicas.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {camadas.includes("Saúde") && (
+                    <div className="flex flex-col gap-0.5 w-full overflow-hidden shrink-0">
+                      <label className="text-[8px] font-bold text-red-700 uppercase tracking-wider">Unidade (Saúde)</label>
+                      <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+                        <SelectTrigger className="h-6 border-red-200/60 bg-red-50/50 text-[10px] w-full [&>span]:truncate"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="(todas)">(todas)</SelectItem>
+                          {tiposUnicos.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {camadas.includes("Patrimônio Histórico") && (
+                    <div className="flex flex-col gap-0.5 w-full overflow-hidden shrink-0">
+                      <label className="text-[8px] font-bold text-amber-700 uppercase tracking-wider">Tipologia (Patrimônio)</label>
+                      <Select value={filtroTipologia} onValueChange={setFiltroTipologia}>
+                        <SelectTrigger className="h-6 border-amber-200/60 bg-amber-50/50 text-[10px] w-full [&>span]:truncate"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="(todas)">(todas)</SelectItem>
+                          {tipologiasUnicas.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-
-            <div className="flex flex-col gap-0.5 w-full">
-              <label className="text-[8px] font-bold text-red-700 uppercase tracking-wider">Heatmap Saúde</label>
-              <button
-                onClick={() => setShowHeatmapSaude(p => !p)}
-                className="h-6 w-full rounded text-[10px] font-bold border transition-colors flex items-center justify-center"
-                style={{
-                  backgroundColor: showHeatmapSaude ? "#b91c1c20" : "transparent",
-                  borderColor: showHeatmapSaude ? "#b91c1c" : "#cbd5e1",
-                  color: showHeatmapSaude ? "#b91c1c" : "#64748b"
-                }}
-              >
-                {showHeatmapSaude ? "Visível" : "Oculto"}
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-0.5 w-full">
-              <label className="text-[8px] font-bold text-green-700 uppercase tracking-wider">Heatmap Educação</label>
-              <button
-                onClick={() => setShowHeatmapEducacao(p => !p)}
-                className="h-6 w-full rounded text-[10px] font-bold border transition-colors flex items-center justify-center"
-                style={{
-                  backgroundColor: showHeatmapEducacao ? "#15803d20" : "transparent",
-                  borderColor: showHeatmapEducacao ? "#15803d" : "#cbd5e1",
-                  color: showHeatmapEducacao ? "#15803d" : "#64748b"
-                }}
-              >
-                {showHeatmapEducacao ? "Visível" : "Oculto"}
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       )}
       {!showFiltros && (temCamadaTabular || isCenarioAtivo) && (
@@ -1686,7 +1695,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
 
       {/* ── Painel de Análise (esquerda flutuante) ─────────────────────── */}
       {showPainelAnalise && (
-        <div className="absolute left-4 bottom-4 w-[400px] flex flex-col rounded-xl shadow-2xl p-4 overflow-hidden z-20" style={{ top: panelTop, ...glassStyle(0.6), animation: "panelSlideIn 320ms var(--ease-drawer) both" }}>
+        <div className="absolute left-3 bottom-1.5 w-[385px] flex flex-col rounded-xl shadow-2xl p-4 overflow-hidden z-20" style={{ top: panelTop, ...glassStyle(0.6), animation: "panelSlideIn 320ms var(--ease-drawer) both" }}>
           <div className="mb-3 shrink-0">
             <h2 className="text-base font-black tracking-tight flex items-center justify-between" style={{ color: C.primary }}>
               Painel
@@ -1725,14 +1734,16 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-[background-color,color,box-shadow] duration-150 border focus-visible:outline-none"
                   style={tabAtiva === value
                     ? { backgroundColor: C.primary, color: "#fff",  borderColor: C.dark, boxShadow: "0 1px 3px rgba(0,0,0,.18)" }
-                    : { backgroundColor: "#fff",     color: C.muted, borderColor: C.border }}
+                    : { backgroundColor: PANEL_CARD_BG, color: C.muted, borderColor: C.border }}
                 >
                   {icon}{label}
                 </button>
               ))}
             </div>
 
-            {/* KPI de população — exibido apenas na aba Resumo */}
+            {/* Resumo */}
+            <TabsContent value="resumo" className="flex-1 min-h-0 flex flex-col mt-2 data-[state=inactive]:hidden">
+              <FitHeight min={0.5} max={1.3}>
             {tabAtiva === "resumo" && popData?.["Rio Grande"] && (() => {
               const cenSlug = cenario.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
               const popCen = cenario !== "(nenhum)" ? popData["Rio Grande"].cenarios?.[cenSlug] : null;
@@ -1785,24 +1796,26 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
               );
             })()}
 
-            {/* Resumo */}
-            <TabsContent value="resumo" className="flex-1 overflow-y-auto mt-0 pr-2 pb-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full">
               {(() => {
                 const staffBase    = Object.values(metricasSau.base.staff).reduce((a, b) => a + (b as number), 0);
                 const staffImpacto = Object.values(metricasSau.impacto.staff).reduce((a, b) => a + (b as number), 0);
-                const infraLog = infraStats?.["Logradouros"];
+                const infraTerr = infraStats?.["Terrenos"];
+                const NIVEIS_ALUNOS = ["inf", "fund", "med", "profis", "eja", "esp"];
+                const somaAlunos = (m: any) => NIVEIS_ALUNOS.reduce((acc, k) => acc + ((m[k] as number) || 0), 0);
+                const alunosBase    = somaAlunos(metricasEdu.base);
+                const alunosImpacto = somaAlunos(metricasEdu.impacto);
                 const haBaseAgri = metricasAgri.base.reduce((s, { ha }) => s + ha, 0);
                 const haImpAgri  = metricasAgri.impacto.reduce((s, { ha }) => s + ha, 0);
 
                 const tiles: { icon: React.ReactNode; cor: string; titulo: string; valor: number; base: number; sufixo?: string; casas?: number }[] = [
                   { icon: <Users size={15} strokeWidth={2.5} />,       cor: COLORS.empresas,  titulo: "Empregados",     valor: isCenarioAtivo ? metricasEmp.impacto.emp   : metricasEmp.base.emp,   base: metricasEmp.base.emp },
                   { icon: <Building2 size={15} strokeWidth={2.5} />,   cor: COLORS.empresas,  titulo: "Empresas",       valor: isCenarioAtivo ? metricasEmp.impacto.estab : metricasEmp.base.estab, base: metricasEmp.base.estab },
-                  { icon: <Wallet size={15} strokeWidth={2.5} />,      cor: COLORS.empresas,  titulo: "Massa Salarial", valor: isCenarioAtivo ? metricasEmp.impacto.massa : metricasEmp.base.massa, base: metricasEmp.base.massa, sufixo: "R$" },
+                  { icon: <BookOpen size={15} strokeWidth={2.5} />,   cor: COLORS.educacao,   titulo: "Alunos",         valor: isCenarioAtivo ? alunosImpacto : alunosBase, base: alunosBase },
                   { icon: <GraduationCap size={15} strokeWidth={2.5} />, cor: COLORS.educacao, titulo: "Escolas",       valor: isCenarioAtivo ? metricasEdu.impacto.escolas : metricasEdu.base.escolas, base: metricasEdu.base.escolas },
                   { icon: <HeartPulse size={15} strokeWidth={2.5} />,  cor: COLORS.saude,     titulo: "Unidades de Saúde", valor: isCenarioAtivo ? metricasSau.impacto.unidades : metricasSau.base.unidades, base: metricasSau.base.unidades },
                   { icon: <Stethoscope size={15} strokeWidth={2.5} />, cor: COLORS.saude,     titulo: "Profissionais Saúde", valor: isCenarioAtivo ? staffImpacto : staffBase, base: staffBase },
                   ...(metricasPatrimonio.base.total > 0 ? [{ icon: <Landmark size={15} strokeWidth={2.5} />, cor: COLORS.patrimonio, titulo: "Patrimônio Histórico", valor: isCenarioAtivo ? metricasPatrimonio.impacto.total : metricasPatrimonio.base.total, base: metricasPatrimonio.base.total }] : []),
-                  ...(infraLog ? [{ icon: <Route size={15} strokeWidth={2.5} />, cor: INFRA_COLORS["Logradouros"], titulo: "Ruas", valor: isCenarioAtivo ? infraLog.ruas_atingidas : infraLog.ruas_total, base: infraLog.ruas_total }] : []),
+                  ...(infraTerr ? [{ icon: <LandPlot size={15} strokeWidth={2.5} />, cor: INFRA_COLORS["Terrenos"], titulo: "Terrenos", valor: isCenarioAtivo ? infraTerr.atingidos : infraTerr.total, base: infraTerr.total }] : []),
                 ];
 
                 return (
@@ -1826,7 +1839,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                           <Sprout size={12} strokeWidth={2.5} className="text-white" />
                           <span className="text-[10px] font-black uppercase tracking-wider text-white">Área Agrícola</span>
                         </div>
-                        <div className="flex items-center gap-3 px-3 py-2.5" style={glassStyle(0.5)}>
+                        <div className="flex items-center gap-3 px-3 py-2.5" style={{ backgroundColor: PANEL_CARD_BG }}>
                           <DonutChart
                             size={56} strokeWidth={7} highlightOnHover={false}
                             data={[
@@ -1847,6 +1860,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                   </>
                 );
               })()}
+              </FitHeight>
             </TabsContent>
 
             {/* Empresas */}
@@ -1918,7 +1932,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                             title={isSelected ? "Clique para remover filtro" : `Filtrar por ${normalizeSetor(setor)}`}
                           >
                             <span className="text-[9px] w-24 shrink-0 truncate" style={{ color: isSelected ? C.primary : C.muted }} title={normalizeSetor(setor)}>{normalizeSetor(setor)}</span>
-                            <div className="flex-1 rounded-full h-2.5 overflow-hidden" style={{ backgroundColor: C.cardBg }}>
+                            <div className="flex-1 rounded-full h-2.5 overflow-hidden" style={{ backgroundColor: PANEL_TRACK_BG }}>
                               <div className="h-full rounded-full" style={{ width: `${isCenarioAtivo ? pct : Math.round((val/maxBase)*100)}%`, backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
                             </div>
                             <span className="text-[9px] font-bold tabular-nums w-16 text-right shrink-0" style={{ color: C.primary }}>
@@ -1998,12 +2012,12 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                       <div className="flex flex-col gap-1 mb-2">
                         <button onClick={() => setShowListaEscolas(p => !p)}
                           className="w-full flex items-center justify-between text-[10px] font-bold px-2.5 py-1.5 rounded-lg"
-                          style={{ backgroundColor: C.cardBg, color: C.primary, border: `1px solid ${C.border}` }}>
+                          style={{ backgroundColor: PANEL_CARD_BG, color: C.primary, border: `1px solid ${C.border}` }}>
                           <span>Escolas Atingidas ({lista.length})</span>
                           <span style={{ fontSize: 9 }}>{showListaEscolas ? "▲" : "▼"}</span>
                         </button>
                         {showListaEscolas && (
-                          <div className="flex flex-col gap-0.5 max-h-52 overflow-y-auto rounded-lg p-1.5" style={{ backgroundColor: C.cardBg, border: `1px solid ${C.border}` }}>
+                          <div className="flex flex-col gap-0.5 max-h-52 overflow-y-auto rounded-lg p-1.5" style={{ backgroundColor: PANEL_CARD_BG, border: `1px solid ${C.border}` }}>
                             {lista.map((nome: string, i: number) => (
                               <span key={i} className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: C.muted }} title={nome}>{nome}</span>
                             ))}
@@ -2041,7 +2055,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                             title={isSelected ? "Clique para remover filtro" : `Filtrar por ${dep}`}
                           >
                             <span className="text-[9px] w-20 shrink-0 truncate" style={{ color: isSelected ? C.primary : C.muted }} title={dep}>{dep}</span>
-                            <div className="flex-1 rounded-full h-2.5 overflow-hidden" style={{ backgroundColor: C.cardBg }}>
+                            <div className="flex-1 rounded-full h-2.5 overflow-hidden" style={{ backgroundColor: PANEL_TRACK_BG }}>
                               <div className="h-full rounded-full" style={{ width: `${isCenarioAtivo ? pct : Math.round((val/maxBase)*100)}%`, backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
                             </div>
                             <span className="text-[9px] font-bold tabular-nums w-16 text-right shrink-0" style={{ color: C.primary }}>
@@ -2155,12 +2169,12 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                             <div key={tipoKey}>
                               <button onClick={() => cfg.setState(p => !p)}
                                 className="w-full flex items-center justify-between text-[10px] font-bold px-2.5 py-1.5 rounded-lg"
-                                style={{ backgroundColor: C.cardBg, color: C.primary, border: `1px solid ${C.border}` }}>
+                                style={{ backgroundColor: PANEL_CARD_BG, color: C.primary, border: `1px solid ${C.border}` }}>
                                 <span>{cfg.label} ({lista.length})</span>
                                 <span style={{ fontSize: 9 }}>{cfg.state ? "▲" : "▼"}</span>
                               </button>
                               {cfg.state && (
-                                <div className="flex flex-col gap-0.5 mt-1 max-h-44 overflow-y-auto rounded-lg p-1.5" style={{ backgroundColor: C.cardBg, border: `1px solid ${C.border}` }}>
+                                <div className="flex flex-col gap-0.5 mt-1 max-h-44 overflow-y-auto rounded-lg p-1.5" style={{ backgroundColor: PANEL_CARD_BG, border: `1px solid ${C.border}` }}>
                                   {lista.map((nome: string, i: number) => (
                                     <span key={i} className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: C.muted }} title={nome}>{nome}</span>
                                   ))}
@@ -2203,7 +2217,7 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                         return (
                           <div key={d.name} className="flex items-center gap-2">
                             <span className="text-[9px] w-20 shrink-0 truncate" style={{ color: C.muted }} title={d.name}>{d.name}</span>
-                            <div className="flex-1 rounded-full h-2.5 overflow-hidden" style={{ backgroundColor: C.cardBg }}>
+                            <div className="flex-1 rounded-full h-2.5 overflow-hidden" style={{ backgroundColor: PANEL_TRACK_BG }}>
                               <div className="h-full rounded-full" style={{ width: `${barW}%`, backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
                             </div>
                             <span className="text-[9px] font-bold tabular-nums w-14 text-right shrink-0" style={{ color: C.primary }}>
@@ -2377,13 +2391,17 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                                 }
                               />
                             </div>
-                            <div className="flex flex-col gap-2 mt-2">
+                            <div className="flex flex-col gap-0.5">
                               {pieData.map((d) => {
                                 const haBaseClasse = base.find(({ f: bf }) => bf.properties?.tipo_classe === d.name)?.ha ?? 0;
                                 return (
-                                  <KPIRow key={d.name} isLoading={isLoading} titulo={d.name} cor={d.cor}
-                                    valor={`${formatoBr(d.value, 0)} ha`} sub="Área"
-                                    delta={isCenarioAtivo && haBaseClasse > 0 ? `de ${formatoBr(haBaseClasse, 0)} ha (${formatoBr(d.value / haBaseClasse * 100, 2)}%)` : undefined} />
+                                  <div key={d.name} className="flex items-center gap-2 rounded-md px-1 py-0.5"
+                                    title={isCenarioAtivo && haBaseClasse > 0 ? `${formatoBr(d.value, 0)} de ${formatoBr(haBaseClasse, 0)} ha (${formatoBr(d.value / haBaseClasse * 100, 2)}% da classe)` : undefined}>
+                                    <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: d.cor }} />
+                                    <span className="text-[9px] flex-1 truncate" style={{ color: C.muted }}>{d.name}</span>
+                                    <span className="text-[9px] font-bold tabular-nums" style={{ color: C.primary }}>{formatoBr(d.value, 0)} ha</span>
+                                    <span className="text-[9px] w-10 text-right tabular-nums" style={{ color: C.muted }}>{haTotal > 0 ? Math.round(d.value / haTotal * 100) : 0}%</span>
+                                  </div>
                                 );
                               })}
                             </div>
@@ -2434,12 +2452,12 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                               <>
                                 <button onClick={() => setShowListaLogradouros(p => !p)}
                                   className="w-full flex items-center justify-between text-[10px] font-bold px-2.5 py-1.5 rounded-lg"
-                                  style={{ backgroundColor: C.cardBg, color: C.primary, border: `1px solid ${C.border}` }}>
+                                  style={{ backgroundColor: PANEL_CARD_BG, color: C.primary, border: `1px solid ${C.border}` }}>
                                   <span>Ruas Atingidas ({ruasLista.length})</span>
                                   <span style={{ fontSize: 9 }}>{showListaLogradouros ? "▲" : "▼"}</span>
                                 </button>
                                 {showListaLogradouros && (
-                                  <div className="flex flex-col gap-0.5 max-h-52 overflow-y-auto rounded-lg p-1.5" style={{ backgroundColor: C.cardBg, border: `1px solid ${C.border}` }}>
+                                  <div className="flex flex-col gap-0.5 max-h-52 overflow-y-auto rounded-lg p-1.5" style={{ backgroundColor: PANEL_CARD_BG, border: `1px solid ${C.border}` }}>
                                     {ruasLista.map((label, i) => (
                                       <span key={i} className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: C.muted }} title={label}>{label}</span>
                                     ))}
@@ -2449,15 +2467,12 @@ const [showListaLogradouros, setShowListaLogradouros] = useState(false);
                             )}
                           </div>
                           {s.segmentos_total > 0 && (
-                            <>
-                              <h3 className="text-[10px] font-bold uppercase tracking-wider pt-2 pb-1 border-t" style={{ color: INFRA_COLORS["Logradouros"], borderColor: C.border }}>
-                                Cobertura de Serviços <span className="normal-case font-normal text-[9px]" style={{ color: C.muted }}>— de {compactoBr(s.segmentos_total,0)} segmentos</span>
-                              </h3>
+                            <ChartCard titulo={<>Cobertura de Serviços <span className="normal-case font-normal text-[9px] text-white/70">— de {compactoBr(s.segmentos_total,0)} segmentos</span></>}>
                               <div className="flex flex-col gap-2">
                                 <BarServico label="Drenagem"   value={isCenarioAtivo ? s.drenagem_atingidos   : s.drenagem_total}   total={isCenarioAtivo ? s.drenagem_total   : s.segmentos_total} cor={INFRA_COLORS["Logradouros"]} />
                                 <BarServico label="Iluminação" value={isCenarioAtivo ? s.iluminacao_atingidos : s.iluminacao_total} total={isCenarioAtivo ? s.iluminacao_total : s.segmentos_total} cor={INFRA_COLORS["Logradouros"]} />
                               </div>
-                            </>
+                            </ChartCard>
                           )}
                         </div>
                       </div>
@@ -2559,7 +2574,7 @@ function ChartCard({ titulo, extra, children }: { titulo: React.ReactNode; extra
         <span className="text-[10px] font-black uppercase tracking-wider text-white truncate">{titulo}</span>
         {extra}
       </div>
-      <div className="p-3" style={glassStyle(0.5)}>
+      <div className="p-3" style={{ backgroundColor: PANEL_CARD_BG }}>
         {children}
       </div>
     </div>
@@ -2571,7 +2586,7 @@ function MiniStatCard({ icon, cor, titulo, valor, sub, pct, isLoading }: {
 }) {
   const p = Math.max(0, Math.min(100, pct ?? 100));
   return (
-    <div className="rounded-lg p-2.5 flex items-center gap-2.5" style={{ ...glassStyle(0.55), boxShadow: "none" }}>
+    <div className="rounded-lg p-2.5 flex items-center gap-2.5" style={{ backgroundColor: PANEL_CARD_BG }}>
       <DonutChart
         size={40} strokeWidth={5} highlightOnHover={false}
         data={[{ value: p, color: cor, label: "atingido" }, { value: 100 - p, color: `${cor}22`, label: "resto" }]}
@@ -2595,7 +2610,7 @@ function KPIRow({ titulo, valor, sub, delta, cor, isLoading }: { titulo: string;
         {cor && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: cor }} />}
         <span className="text-[9px] font-black uppercase tracking-wider text-white truncate leading-none">{titulo}</span>
       </div>
-      <div className="flex items-center justify-between gap-3 px-3 py-2" style={{ ...glassStyle(0.5), boxShadow: "none" }}>
+      <div className="flex items-center justify-between gap-3 px-3 py-2" style={{ backgroundColor: PANEL_CARD_BG }}>
         <div className="flex flex-col min-w-0">
           <span className="text-[10px] leading-none" style={{ color: C.muted }}>{sub}</span>
           {delta && (
@@ -2603,7 +2618,7 @@ function KPIRow({ titulo, valor, sub, delta, cor, isLoading }: { titulo: string;
               <Skeleton className="h-4 w-16 mt-1.5" />
             ) : (
               <span className="text-[9px] font-semibold mt-1.5 inline-block px-1.5 py-0.5 rounded w-fit"
-                style={{ backgroundColor: C.bg, border: `1px solid ${C.border}`, color: C.primary }}>{delta}</span>
+                style={{ backgroundColor: PANEL_CARD_BG, border: `1px solid ${C.border}`, color: C.primary }}>{delta}</span>
             )
           )}
         </div>
@@ -2647,11 +2662,11 @@ function LegendItem({ cor, label, area }: { cor: string; label: string; area?: b
 
 function KPICard({ titulo, valor, sub, delta, isLoading }: { titulo: string; valor: string | number; sub: string; delta?: string; isLoading?: boolean }) {
   return (
-    <Card className="hover-lift overflow-hidden p-0 gap-0 border-0 shadow-none">
+    <Card className="hover-lift overflow-hidden p-0 gap-0 border-0 shadow-none bg-transparent">
       <div className="px-3 py-1.5" style={{ background: BRAND_GRADIENT }}>
         <CardTitle className="text-[10px] font-black uppercase tracking-wider leading-tight text-white">{titulo}</CardTitle>
       </div>
-      <CardContent className="px-3 pb-2.5 pt-2 flex flex-col" style={{ ...glassStyle(0.5), boxShadow: "none" }}>
+      <CardContent className="px-3 pb-2.5 pt-2 flex flex-col" style={{ backgroundColor: PANEL_CARD_BG }}>
         {isLoading ? (
           <Skeleton className="h-6 w-24 mb-1" />
         ) : (
@@ -2662,7 +2677,7 @@ function KPICard({ titulo, valor, sub, delta, isLoading }: { titulo: string; val
           isLoading ? (
             <Skeleton className="h-4 w-16" />
           ) : (
-            <div className="text-[10px] font-semibold inline-block px-1.5 py-0.5 rounded w-fit" style={{ backgroundColor: C.bg, border: `1px solid ${C.border}`, color: C.primary }}>{delta}</div>
+            <div className="text-[10px] font-semibold inline-block px-1.5 py-0.5 rounded w-fit" style={{ backgroundColor: PANEL_CARD_BG, border: `1px solid ${C.border}`, color: C.primary }}>{delta}</div>
           )
         )}
       </CardContent>

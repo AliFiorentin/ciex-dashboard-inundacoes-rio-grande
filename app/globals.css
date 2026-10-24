@@ -5,6 +5,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Tamanho mínimo do Dashboard: 1150 x 650 px. Abaixo disso (variante "telefone") só aparece o aviso
+   de tamanho, sem rolagem e sem reduzir o layout. */
+@custom-variant telefone {
+  @media (max-width: 1149.98px) { @slot; }
+  @media (max-height: 649.98px) { @slot; }
+}
+
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: var(--font-sans);
@@ -165,3 +172,23 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Cabeçalho do Dashboard: tamanhos fluidos com a largura da janela (mesma escala do Dashboard BID). */
+.dash-header {
+  --logo-h: clamp(20px, 1.7vw, 28px);
+  --logo-h2: clamp(17px, 1.45vw, 24px);
+  --section-gap: clamp(8px, 1.2vw, 16px);
+  --select-label: clamp(7px, 0.65vw, 9px);
+  --select-trigger: clamp(9px, 0.85vw, 11px);
+  --select-h: clamp(20px, 1.7vw, 28px);
+  --select-w: clamp(150px, 13vw, 190px);
+  --btn-size: clamp(7.5px, 0.75vw, 10px);
+  --btn-h: clamp(20px, 1.7vw, 28px);
+  --btn-px: clamp(0.3rem, 0.6vw, 0.5rem);
+  --layer-gap: clamp(2px, 0.4vw, 4px);
+}
+
+/* Botões de zoom do mapa menores (24 px), acompanhando os demais controles compactos. */
+.maplibregl-map .maplibregl-ctrl-bottom-right .maplibregl-ctrl { margin: 0 8px 8px 0; }
+.maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button { width: 24px; height: 24px; }
+.maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button .maplibregl-ctrl-icon { background-size: 18px 18px; }
