@@ -32,3 +32,6 @@ CLAUDE.md
 # tooling e documentação de processo (mantidos apenas localmente)
 /docs/
 /scripts/
+
+# worker do maplibre-gl (copiado por pnpm copy:maplibre)
+/public/maplibre/
