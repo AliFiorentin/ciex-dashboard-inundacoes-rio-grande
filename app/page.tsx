@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import Map, { Source, Layer, NavigationControl, MapRef, Popup } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { setWorkerUrl } from "maplibre-gl";
 import * as turf from "@turf/turf";
 import Image from "next/image";
 import * as flatgeobuf from "flatgeobuf";
@@ -20,6 +21,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMe
 import { Skeleton } from "@/components/ui/skeleton";
 import { DonutChart } from "@/components/ui/donut-chart";
 import { FitHeight } from "@/components/FitHeight";
+
+// maplibre-gl 6 is ESM-only: worker is copied to public/ by `pnpm copy:maplibre`.
+setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 

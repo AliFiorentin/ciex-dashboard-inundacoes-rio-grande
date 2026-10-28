@@ -1,6 +1,7 @@
 "use client";
 
-import MapLibreGL, { type PopupOptions, type MarkerOptions } from "maplibre-gl";
+import * as MapLibreGL from "maplibre-gl";
+import type { PopupOptions, MarkerOptions } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
   createContext,
@@ -1448,10 +1449,10 @@ function MapArc<T extends MapArcDatum = MapArcDatum>({
   useEffect(() => {
     if (!isLoaded || !map || !map.getLayer(layerId)) return;
     for (const [key, value] of Object.entries(mergedPaint)) {
-      map.setPaintProperty(layerId, key, value as never);
+      map.setPaintProperty(layerId, key as never, value as never);
     }
     for (const [key, value] of Object.entries(mergedLayout)) {
-      map.setLayoutProperty(layerId, key, value as never);
+      map.setLayoutProperty(layerId, key as never, value as never);
     }
     if (map.getLayer(hitLayerId)) {
       map.setPaintProperty(hitLayerId, "line-width", hitWidth);

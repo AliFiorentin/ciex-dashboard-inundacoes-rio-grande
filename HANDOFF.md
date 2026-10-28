@@ -14,7 +14,7 @@ O que se perde é o que está no disco do sistema e precisará ser reinstalado/r
 
 | Item | Ação após formatar |
 |---|---|
-| Node.js + npm | Reinstalar. `node_modules` já está em D:, mas se der erro de binário nativo, rodar `npm install` de novo |
+| Node.js + npm | Reinstalar. `node_modules` já está em D:, mas se der erro de binário nativo, rodar `pnpm install` de novo |
 | Python 3.12 | Reinstalar apenas se for regerar o lookup do SUS. `pip install pandas pyarrow` |
 | Credenciais do GitHub | Refazer autenticação no primeiro `git push` (fluxo pelo navegador) |
 | Configuração do Claude Code | Reinstalar; o histórico de memória do projeto ficava em `C:\Users\...\.claude\` |
@@ -128,11 +128,11 @@ A camada de Agricultura **não** teve o GeoJSON de mapa substituído — só for
 
 ## Verificações que passaram
 
-`npm run typecheck`, `npm run lint` e `npm run build` — todos limpos no commit `de563f0`. Build de produção gera `/`, `/perdas` e `/_not-found` como estático. Sem erros de console no dashboard nem na página de perdas.
+`pnpm typecheck`, `pnpm lint` e `pnpm build` — todos limpos no commit `de563f0`. Build de produção gera `/`, `/perdas` e `/_not-found` como estático. Sem erros de console no dashboard nem na página de perdas.
 
 ## Ambiente
 
-- Node com Next.js 16.2.6 (Turbopack), `npm run dev` na porta 3000.
+- Node com Next.js 16.2.6 (Turbopack), `pnpm dev` na porta 3000.
 - Python 3.12 com `pandas` e `pyarrow` foi necessário apenas para gerar o `producao_sus_por_cnes_rio_grande.json` a partir do parquet do BID. O `calcular_perdas_rio_grande.py` em si usa só a biblioteca padrão.
 - O shell da máquina é Windows PowerShell 5.1, onde `&&` não funciona como separador — usar `;`.
 

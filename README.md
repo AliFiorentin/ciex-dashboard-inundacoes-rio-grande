@@ -216,7 +216,7 @@ O cenário ativo é persistido na URL via `?cenario=<código>` usando `history.r
 
 Instalar com:
 ```bash
-npm install
+pnpm install
 ```
 
 ### Scripts de conversão (Python ≥ 3.10)
@@ -239,15 +239,15 @@ pip install geopandas shapely pandas numpy rasterio
 ## Como Executar
 
 ```bash
-npm install
-npm run dev        # http://localhost:3000
+pnpm install
+pnpm dev        # http://localhost:3000
 ```
 
 ```bash
-npm run build      # Build de produção
-npm run typecheck  # Verificação de tipos (tsc --noEmit)
-npm run lint       # ESLint
-npm run format     # Prettier
+pnpm build      # Build de produção
+pnpm typecheck  # Verificação de tipos (tsc --noEmit)
+pnpm lint       # ESLint
+pnpm format     # Prettier
 ```
 
 ### Adicionando um novo cenário

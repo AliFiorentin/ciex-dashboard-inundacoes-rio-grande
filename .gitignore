@@ -14,8 +14,6 @@ next-env.d.ts
 .env*.local
 
 # logs
-npm-debug.log*
-yarn-debug.log*
 pnpm-debug.log*
 
 # sistema operacional / editores
@@ -34,3 +32,6 @@ CLAUDE.md
 # tooling e documentação de processo (mantidos apenas localmente)
 /docs/
 /scripts/
+
+# worker do maplibre-gl (copiado por pnpm copy:maplibre)
+/public/maplibre/
